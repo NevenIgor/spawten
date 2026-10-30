@@ -92,7 +92,20 @@ async def _ask_step(target_msg: Message | None, state: FSMContext, index: int,
     await state.set_state(step["state"])
 
 
+def _as_date(value) -> date | None:
+    """Coerce FSM/DB value to date (FSM stores ISO strings, Redis-safe)."""
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return parse_date(value)
+    return None
+
+
 def _render_value(step: dict, value) -> str:
+    value = _as_date(value) or value
     if isinstance(value, date):
         return format_date(value)
     if isinstance(value, dict):
@@ -116,7 +129,9 @@ async def _show_review(source: Message | CallbackQuery | None, state: FSMContext
     data = await state.get_data()
     lines = []
     for step in STEPS:
-        value = data.get(step["key"])
+        value = _as_date(data.get(step["key"]))
+        if value is None:
+            value = data.get(step["key"])
         if isinstance(value, date):
             value = format_date(value)
         if value in (None, ""):
@@ -182,7 +197,9 @@ async def handle_text(message: Message, state: FSMContext) -> None:
         if parsed is None:
             await message.answer(text(tx.ERR_DATE_FORMAT))
             return
-        await state.update_data({step["key"]: parsed})
+        # Store ISO string — aiogram RedisStorage JSON-serializes FSM data
+        # and datetime.date objects are not JSON serializable.
+        await state.update_data({step["key"]: parsed.isoformat()})
         await _advance(message, state, index)
         return
 
@@ -323,9 +340,7 @@ async def cb_relationship(cb: CallbackQuery, state: FSMContext) -> None:
 async def cb_submit(cb: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     tg_id = data.get("tg_id") or cb.from_user.id
-    birth = data.get("relative_birth_date")
-    if isinstance(birth, str):
-        birth = parse_date(birth)
+    birth = _as_date(data.get("relative_birth_date"))
 
     try:
         await run_sync(

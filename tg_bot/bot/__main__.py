@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from aiogram import Bot, Dispatcher
@@ -13,6 +14,11 @@ from bot.config import Config
 from bot.handlers import register_routers
 
 logger = logging.getLogger(__name__)
+
+
+def _fsm_dumps(obj):
+    """JSON encoder for FSM data: datetime.date/time are not JSON serializable."""
+    return json.dumps(obj, default=str)
 
 
 async def main() -> None:
@@ -30,7 +36,9 @@ async def main() -> None:
     try:
         redis_client = Redis.from_url(config.redis_url)
         await redis_client.ping()
-        storage: MemoryStorage | RedisStorage = RedisStorage(redis=redis_client)
+        storage: MemoryStorage | RedisStorage = RedisStorage(
+            redis=redis_client, json_dumps=_fsm_dumps
+        )
         logger.info("FSM storage: Redis (%s)", config.redis_url)
     except Exception as exc:  # noqa: BLE001
         if redis_client is not None:
