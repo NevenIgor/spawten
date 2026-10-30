@@ -1,11 +1,11 @@
-"""Базовые миксины для моделей приложения."""
+"""Base model mixins for the application."""
 import uuid
 
 from django.db import models
 
 
 class UUIDMixin(models.Model):
-    """Миксин: pk в виде UUID вместо числового id."""
+    """Mixin: UUID primary key instead of numeric id."""
 
     id = models.UUIDField(
         primary_key=True,
@@ -19,15 +19,15 @@ class UUIDMixin(models.Model):
 
 
 class TimeStampedMixin(models.Model):
-    """Миксин: служебные поля created / modified."""
+    """Mixin: bookkeeping fields created / modified."""
 
     created = models.DateTimeField(
         auto_now_add=True,
-        verbose_name="Создано",
+        verbose_name="Created",
     )
     modified = models.DateTimeField(
         auto_now=True,
-        verbose_name="Изменено",
+        verbose_name="Modified",
     )
 
     class Meta:
@@ -35,7 +35,7 @@ class TimeStampedMixin(models.Model):
 
 
 class BaseModel(UUIDMixin, TimeStampedMixin):
-    """Удобный родитель для всех бизнес-моделей: uuid + created + modified."""
+    """Convenient parent for all business models: uuid + created + modified."""
 
     class Meta:
         abstract = True

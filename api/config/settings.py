@@ -1,4 +1,4 @@
-"""Django settings (config) — минимальный рабочий проект под docker-compose."""
+"""Django settings (config) — minimal working project for docker-compose."""
 import os
 from pathlib import Path
 
@@ -66,7 +66,7 @@ DATABASES = {
     }
 }
 
-# Redis как кэш и сессии
+# Redis as cache and sessions
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 CACHES = {
     "default": {
@@ -88,7 +88,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "ru-ru"
+LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True

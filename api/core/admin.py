@@ -13,6 +13,7 @@ class StatusAdmin(admin.ModelAdmin):
 class LeadAdmin(admin.ModelAdmin):
     list_display = (
         "full_name",
+        "tg_id",
         "relative_full_name",
         "status",
         "contact_phone",
@@ -20,5 +21,5 @@ class LeadAdmin(admin.ModelAdmin):
         "created",
     )
     list_filter = ("status", "first_contact_date")
-    search_fields = ("full_name", "relative_full_name", "contact_phone")
+    search_fields = ("full_name", "relative_full_name", "contact_phone", "tg_id")
     readonly_fields = ("id", "created", "modified")

@@ -1,21 +1,21 @@
-"""Модели приложения core: статусы и лиды."""
+"""Core application models: statuses and leads."""
 from django.db import models
 
 from core.mixins import BaseModel
 
 
 class Status(BaseModel):
-    """Статус лида (например: посетили, обратились, в работе, клиент, архив)."""
+    """Lead status (e.g. visited, contacted, in progress, client, archived)."""
 
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name="Статус",
+        verbose_name="Name",
     )
 
     class Meta:
-        verbose_name = "Статус"
-        verbose_name_plural = "Статусы"
+        verbose_name = "Status"
+        verbose_name_plural = "Statuses"
         ordering = ("name",)
 
     def __str__(self):
@@ -23,64 +23,71 @@ class Status(BaseModel):
 
 
 class Lead(BaseModel):
-    """Лид — информация о потенциальном клиенте и его родственнике."""
+    """Lead — information about a potential client and their relative."""
 
-    # --- Данные родственника ---
+    # --- Relative data ---
     relative_full_name = models.CharField(
         max_length=255,
-        verbose_name="ФИО родственника",
+        verbose_name="Relative full name",
     )
     relative_birth_date = models.DateField(
         null=True,
         blank=True,
-        verbose_name="Дата рождения родственника",
+        verbose_name="Relative birth date",
     )
     relative_workplace = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        verbose_name="Место работы родственника",
+        verbose_name="Relative workplace",
     )
     relative_location = models.DateField(
         null=True,
         blank=True,
-        verbose_name="Место нахождения родственника",
-        help_text="Поле указано как дата согласно требованиям.",
+        verbose_name="Relative location",
+        help_text="Defined as a date field per requirements.",
     )
     photo = models.ImageField(
         upload_to="leads/photos/%Y/%m/",
         null=True,
         blank=True,
-        verbose_name="Фото",
+        verbose_name="Photo",
     )
     additional_info = models.TextField(
         blank=True,
         default="",
-        verbose_name="Доп. информация",
+        verbose_name="Additional info",
     )
     relationship = models.CharField(
         max_length=100,
         blank=True,
         default="",
-        verbose_name="Кем приходится",
+        verbose_name="Relationship",
     )
 
-    # --- Данные лида ---
+    # --- Lead data ---
     full_name = models.CharField(
         max_length=255,
-        verbose_name="ФИО",
+        verbose_name="Full name",
+    )
+    tg_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name="Telegram ID",
+        help_text="Telegram user numeric ID.",
     )
     workplace = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        verbose_name="Место работы",
+        verbose_name="Workplace",
     )
     contact_phone = models.CharField(
         max_length=32,
         blank=True,
         default="",
-        verbose_name="Контактный телефон",
+        verbose_name="Contact phone",
     )
     status = models.ForeignKey(
         Status,
@@ -88,22 +95,22 @@ class Lead(BaseModel):
         related_name="leads",
         null=True,
         blank=True,
-        verbose_name="Статус",
+        verbose_name="Status",
     )
     first_contact_date = models.DateField(
         null=True,
         blank=True,
-        verbose_name="Дата первого обращения",
+        verbose_name="First contact date",
     )
     note = models.TextField(
         blank=True,
         default="",
-        verbose_name="Примечание",
+        verbose_name="Note",
     )
 
     class Meta:
-        verbose_name = "Лид"
-        verbose_name_plural = "Лиды"
+        verbose_name = "Lead"
+        verbose_name_plural = "Leads"
         ordering = ("-created",)
 
     def __str__(self):
