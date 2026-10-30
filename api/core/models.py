@@ -1,7 +1,13 @@
-"""Core application models: statuses and leads."""
+"""Core application models: statuses and leads.
+
+Все пользовательские подписи берутся из файла перевода Django-подсистемы
+:mod:`core.translations` (``api/core/translations.py``) через lazy-хелпер
+``translate_lazy()``.
+"""
 from django.db import models
 
 from core.mixins import BaseModel
+from core.translations import translate_lazy
 
 
 class Status(BaseModel):
@@ -10,12 +16,12 @@ class Status(BaseModel):
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name="Name",
+        verbose_name=translate_lazy("status.name"),
     )
 
     class Meta:
-        verbose_name = "Status"
-        verbose_name_plural = "Statuses"
+        verbose_name = translate_lazy("status")
+        verbose_name_plural = translate_lazy("status_plural")
         ordering = ("name",)
 
     def __str__(self):
@@ -23,78 +29,78 @@ class Status(BaseModel):
 
 
 class Lead(BaseModel):
-    """Lead — information about a potential client and their relative."""
+    """Lead — информация о потенциальном клиенте и его родственнике."""
 
-    # --- Relative data ---
+    # --- данные родственника ---
     relative_full_name = models.CharField(
         max_length=255,
-        verbose_name="Relative full name",
+        verbose_name=translate_lazy("lead.relative_full_name"),
     )
     relative_birth_date = models.DateField(
         null=True,
         blank=True,
-        verbose_name="Relative birth date",
+        verbose_name=translate_lazy("lead.relative_birth_date"),
     )
     relative_workplace = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        verbose_name="Relative workplace",
+        verbose_name=translate_lazy("lead.relative_workplace"),
     )
     relative_location = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        verbose_name="Relative location",
+        verbose_name=translate_lazy("lead.relative_location"),
     )
     photo = models.ImageField(
         upload_to="leads/photos/%Y/%m/",
         null=True,
         blank=True,
-        verbose_name="Photo",
+        verbose_name=translate_lazy("lead.photo"),
     )
     additional_info = models.TextField(
         blank=True,
         default="",
-        verbose_name="Additional info",
+        verbose_name=translate_lazy("lead.additional_info"),
     )
     additional_media = models.FileField(
         upload_to="leads/additional/%Y/%m/",
         null=True,
         blank=True,
-        verbose_name="Additional media",
-        help_text="Image / video / video note uploaded via the bot.",
+        verbose_name=translate_lazy("lead.additional_media"),
+        help_text=translate_lazy("lead.additional_media.help"),
     )
     relationship = models.CharField(
         max_length=100,
         blank=True,
         default="",
-        verbose_name="Relationship",
+        verbose_name=translate_lazy("lead.relationship"),
     )
 
-    # --- Lead data ---
+    # --- данные лида ---
     full_name = models.CharField(
         max_length=255,
-        verbose_name="Full name",
+        verbose_name=translate_lazy("lead.full_name"),
     )
     tg_id = models.BigIntegerField(
         null=True,
         blank=True,
         unique=True,
-        verbose_name="Telegram ID",
-        help_text="Telegram user numeric ID.",
+        verbose_name=translate_lazy("lead.tg_id"),
+        help_text=translate_lazy("lead.tg_id.help"),
     )
     workplace = models.CharField(
         max_length=255,
         blank=True,
         default="",
-        verbose_name="Workplace",
+        verbose_name=translate_lazy("lead.workplace"),
     )
     contact_phone = models.CharField(
         max_length=32,
         blank=True,
         default="",
-        verbose_name="Contact phone",
+        verbose_name=translate_lazy("lead.contact_phone"),
     )
     status = models.ForeignKey(
         Status,
@@ -102,23 +108,29 @@ class Lead(BaseModel):
         related_name="leads",
         null=True,
         blank=True,
-        verbose_name="Status",
+        verbose_name=translate_lazy("lead.status"),
     )
     first_contact_date = models.DateField(
         null=True,
         blank=True,
-        verbose_name="First contact date",
+        verbose_name=translate_lazy("lead.first_contact_date"),
     )
     note = models.TextField(
         blank=True,
         default="",
-        verbose_name="Note",
+        verbose_name=translate_lazy("lead.note"),
     )
 
     class Meta:
-        verbose_name = "Lead"
-        verbose_name_plural = "Leads"
+        verbose_name = translate_lazy("lead")
+        verbose_name_plural = translate_lazy("lead_plural")
         ordering = ("-created",)
 
     def __str__(self):
         return self.full_name
+
+    # convenience: translated status label for templates / admin reprs
+    def status_display_name(self) -> str:
+        from core.translations import status_display
+
+        return status_display(self.status.name if self.status else "")
