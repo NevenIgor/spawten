@@ -9,12 +9,11 @@ from aiogram.types import Message
 from bot.database import upsert_lead_on_start
 from bot.db_utils import run_sync
 from bot.keyboards import start_kb
+from bot.texts import WELCOME
 
 logger = logging.getLogger(__name__)
 
 router = Router()
-
-WELCOME_TEXT = "Test welcome message"
 
 
 @router.message(CommandStart())
@@ -27,6 +26,6 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
     await state.clear()
     await message.answer(
-        WELCOME_TEXT,
+        WELCOME,
         reply_markup=start_kb(),
     )
