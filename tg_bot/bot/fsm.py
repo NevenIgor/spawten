@@ -47,7 +47,7 @@ STEPS: list[dict] = [
         "label_text": LABELS["relative_workplace"],
         "question_text": QUESTIONS["relative_workplace"],
         "kind": "text",
-        "required": False,
+        "required": True,
     },
     {
         "state": LeadForm.relative_location,
@@ -82,7 +82,7 @@ STEPS: list[dict] = [
         "label_text": LABELS["relationship"],
         "question_text": QUESTIONS["relationship"],
         "kind": "relationship",
-        "required": False,
+        "required": True,
     },
     {
         "state": LeadForm.full_name,
@@ -98,7 +98,7 @@ STEPS: list[dict] = [
         "label_text": LABELS["workplace"],
         "question_text": QUESTIONS["workplace"],
         "kind": "text",
-        "required": False,
+        "required": True,
     },
     {
         "state": LeadForm.contact_phone,

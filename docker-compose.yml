@@ -7,6 +7,7 @@ x-app-env: &app-env
   DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-app}
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key}
   DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+  # Добавьте сюда публичный IP сервера или домен, иначе Django отвечает 400 Bad Request
   DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api,nginx}
   REDIS_URL: redis://redis:6379/0
   CELERY_BROKER_URL: redis://redis:6379/1
