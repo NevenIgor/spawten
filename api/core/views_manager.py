@@ -51,8 +51,35 @@ _T_KEYS = [
 ]
 
 
+#: additional model-field labels used directly by the manager templates
+_EXTRA_KEYS = [
+    "lead.full_name", "lead.contact_phone", "lead.workplace", "lead.tg_id",
+    "lead.first_contact_date", "lead.note", "lead.relative_full_name",
+    "lead.relative_birth_date", "lead.relationship", "lead.relative_workplace",
+    "lead.relative_location", "lead.additional_info",
+    "tgsnapshot.username", "tgsnapshot.phone_number", "tgsnapshot.registered_at",
+    "tgsnapshot.location", "tgsnapshot.language_code", "tgsnapshot.is_premium",
+]
+
+
 def _tmap() -> dict:
-    return {key: translate(key) for key in _T_KEYS}
+    """Flat dotted-key map (JSON payload for JS) ..."""
+    m = {key: translate(key) for key in _T_KEYS}
+    for key in _EXTRA_KEYS:
+        m[key] = translate(key)
+    return m
+
+
+def _tnested() -> dict:
+    """... and the nested variant used by Django templates: ``t.mgr.dashboard_title``."""
+    tree: dict = {}
+    for key, value in _tmap().items():
+        parts = key.split(".")
+        node = tree
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
+    return tree
 
 
 # ---------------------------------------------------------------- helpers
@@ -111,7 +138,7 @@ def login_view(request):
 
     if request.user.is_authenticated and _is_manager(request.user):
         return redirect("/manager/")
-    return render(request, "manager/login.html", {"error": error, "t": _tmap()})
+    return render(request, "manager/login.html", {"error": error, "t": _tnested()})
 
 
 # ---------------------------------------------------------------- dashboard
@@ -143,6 +170,7 @@ def dashboard(request):
         for s in statuses
     ]
 
+    t = _tnested()
     context = {
         "page_obj": page_obj,
         "cards": [_card_payload(lead) for lead in page_obj],
@@ -151,7 +179,8 @@ def dashboard(request):
         "legend": legend,
         "q": q,
         "status_filter": status_filter,
-        "t": _tmap(),
+        "t": t,
+        "t_json": json.dumps(_tmap(), ensure_ascii=False),
     }
     return render(request, "manager/dashboard.html", context)
 
@@ -213,6 +242,7 @@ def lead_detail_view(request, pk: str):
                 "attachment_url": msg.attachment_url,
             })
 
+    t = _tnested()
     context = {
         "lead": lead,
         "tg_info": tg_info,
@@ -221,7 +251,8 @@ def lead_detail_view(request, pk: str):
         "photo_url": lead.photo.url if lead.photo else "",
         "media_url": lead.additional_media.url if lead.additional_media else "",
         "fmt_date": _fmt_date,
-        "t": _tmap(),
+        "t": t,
+        "t_json": json.dumps(_tmap(), ensure_ascii=False),
     }
     return render(request, "manager/lead_detail.html", context)
 

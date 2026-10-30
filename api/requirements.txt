@@ -7,3 +7,6 @@ elasticsearch>=8.15
 django-elasticsearch-dsl>=8.0
 gunicorn>=23.0
 pillow>=11.0
+channels>=4.2
+channels-redis>=4.2
+daphne>=4.1
