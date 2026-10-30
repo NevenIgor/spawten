@@ -57,31 +57,84 @@ def configure_django() -> None:
 
 configure_django()
 
-from core.models import Lead, Status  # noqa: E402
+from core.models import ChatMessage, Lead, LeadStatus, TelegramProfile  # noqa: E402
 
 VISITOR_STATUS_NAME = "visitor"
 ORDER_STATUS_NAME = "order"
 
 
-def get_status(name: str) -> Status | None:
-    """Return a Status by name, creating it on the fly if it is missing."""
-    status, _created = Status.objects.get_or_create(name=name)
+def get_status(name: str) -> LeadStatus | None:
+    """Return a LeadStatus by name, creating it on the fly if it is missing."""
+    status, _created = LeadStatus.objects.get_or_create(
+        name=name, defaults={"color": "gray"}
+    )
     return status
 
 
-def get_visitor_status() -> Status | None:
+def get_visitor_status() -> LeadStatus | None:
     return get_status(VISITOR_STATUS_NAME)
 
 
-def get_order_status() -> Status | None:
+def get_order_status() -> LeadStatus | None:
     return get_status(ORDER_STATUS_NAME)
 
 
-def upsert_lead_on_start(tg_id: int) -> bool:
+# ---------------------------------------------------------- telegram profile
+
+def upsert_telegram_profile(user, *, phone: str = "", location: str = "",
+                            source: str = "bot /start") -> None:
+    """Store/refresh the data we can extract from a Telegram user object.
+
+    ``user`` is an aiogram ``User``; optional ``phone`` (shared contact) and
+    ``location`` (shared geolocation) are merged in when provided.
+    """
+    if user is None or not getattr(user, "id", None):
+        return
+    profile, _ = TelegramProfile.objects.get_or_create(tg_id=user.id)
+    changed = False
+    for field, value in (
+        ("username", user.username or ""),
+        ("first_name", user.first_name or ""),
+        ("last_name", user.last_name or ""),
+        ("language_code", user.language_code or ""),
+        ("is_premium", bool(user.is_premium)),
+    ):
+        current = getattr(profile, field)
+        if value != "" and current != value:
+            setattr(profile, field, value)
+            changed = True
+        elif field == "is_premium" and current != value:
+            setattr(profile, field, value)
+            changed = True
+    if phone and profile.phone_number != phone:
+        profile.phone_number = phone
+        changed = True
+    if location and profile.location != location:
+        profile.location = location
+        changed = True
+    if source and profile.source != source:
+        profile.source = source
+        changed = True
+    if profile.registered_at is None:
+        estimated = TelegramProfile.estimated_registration(user.id)
+        if estimated is not None:
+            profile.registered_at = estimated
+            changed = True
+    if changed:
+        profile.save()
+
+
+def upsert_lead_on_start(tg_id: int, user=None) -> bool:
     """Create a lead with status 'visitor' for a new tg user.
 
     Returns True if a new lead was created, False if it already existed.
+    ``user`` (aiogram User), when given, is also stored as TelegramProfile.
     """
+    if user is not None:
+        try:
+            upsert_telegram_profile(user)
+        except Exception:  # noqa: BLE001 - profile storage must never break /start
+            pass
     lead, created = Lead.objects.get_or_create(
         tg_id=tg_id,
         defaults={
@@ -182,3 +235,33 @@ def save_lead_from_form(
         lead.first_contact_date = _today()
     lead.save()
     return lead
+
+
+# ------------------------------------------------------------- chat messages
+
+def save_incoming_message(tg_id: int, text: str, *, attachment_kind: str = "",
+                          attachment_url: str = "", tg_message_id: int | None = None) -> ChatMessage:
+    """Persist a message the user sent to the bot (direction: incoming)."""
+    return ChatMessage.objects.create(
+        tg_id=tg_id,
+        direction=ChatMessage.Direction.INCOMING,
+        text=text or "",
+        attachment_kind=attachment_kind,
+        attachment_url=attachment_url,
+        tg_message_id=tg_message_id,
+    )
+
+
+def get_lead_status_name(tg_id: int) -> str:
+    lead = Lead.objects.filter(tg_id=tg_id).select_related("status").first()
+    return lead.status.name if lead and lead.status else ""
+
+
+def set_lead_status(tg_id: int, status_name: str) -> bool:
+    """Move a lead to another canonical status (work / lead / ...)."""
+    lead = Lead.objects.filter(tg_id=tg_id).first()
+    if lead is None:
+        return False
+    lead.status = get_status(status_name)
+    lead.save(update_fields=["status", "modified"])
+    return True

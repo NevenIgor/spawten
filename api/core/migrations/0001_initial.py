@@ -14,18 +14,67 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Status',
+            name='LeadStatus',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='UUID')),
                 ('created', models.DateTimeField(auto_now_add=True, verbose_name='Created')),
                 ('modified', models.DateTimeField(auto_now=True, verbose_name='Modified')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Name')),
+                ('name', models.CharField(max_length=32, unique=True, verbose_name='Name')),
+                ('sort_order', models.PositiveSmallIntegerField(default=0, verbose_name='Order')),
+                ('color', models.CharField(choices=[('yellow', 'Pale yellow'), ('green', 'Green'), ('blue', 'Blue'), ('red', 'Red'), ('gray', 'Gray')], default='gray', max_length=16, verbose_name='Card color')),
             ],
             options={
                 'verbose_name': 'Status',
                 'verbose_name_plural': 'Statuses',
-                'ordering': ('name',),
+                'ordering': ('sort_order', 'name'),
             },
+        ),
+        migrations.CreateModel(
+            name='TelegramProfile',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='UUID')),
+                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Created')),
+                ('modified', models.DateTimeField(auto_now=True, verbose_name='Modified')),
+                ('tg_id', models.BigIntegerField(unique=True, verbose_name='Telegram ID')),
+                ('username', models.CharField(blank=True, default='', max_length=64, verbose_name='Username')),
+                ('first_name', models.CharField(blank=True, default='', max_length=128, verbose_name='First name')),
+                ('last_name', models.CharField(blank=True, default='', max_length=128, verbose_name='Last name')),
+                ('language_code', models.CharField(blank=True, default='', max_length=16, verbose_name='Language code')),
+                ('is_premium', models.BooleanField(default=False, verbose_name='Telegram Premium')),
+                ('phone_number', models.CharField(blank=True, default='', max_length=32, verbose_name='Phone bound to the account')),
+                ('registered_at', models.DateTimeField(blank=True, null=True, verbose_name='Registered in Telegram since')),
+                ('location', models.CharField(blank=True, default='', max_length=255, verbose_name='Location')),
+                ('source', models.CharField(blank=True, default='', max_length=64, verbose_name='Source')),
+            ],
+            options={
+                'verbose_name': 'Telegram profile',
+                'verbose_name_plural': 'Telegram profiles',
+                'ordering': ('-created',),
+            },
+        ),
+        migrations.CreateModel(
+            name='ChatMessage',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='UUID')),
+                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Created')),
+                ('modified', models.DateTimeField(auto_now=True, verbose_name='Modified')),
+                ('tg_id', models.BigIntegerField(db_index=True, verbose_name='Telegram ID')),
+                ('direction', models.CharField(choices=[('incoming', 'Incoming (from user)'), ('outgoing', 'Outgoing (via bot)')], max_length=10, verbose_name='Direction')),
+                ('text', models.TextField(verbose_name='Text')),
+                ('attachment_kind', models.CharField(blank=True, default='', max_length=32, verbose_name='Attachment kind')),
+                ('attachment_url', models.CharField(blank=True, default='', max_length=512, verbose_name='Attachment URL')),
+                ('tg_message_id', models.BigIntegerField(blank=True, null=True, verbose_name='Telegram message ID')),
+                ('sent_by', models.CharField(blank=True, default='', max_length=150, verbose_name='Sent by')),
+            ],
+            options={
+                'verbose_name': 'Chat message',
+                'verbose_name_plural': 'Chat messages',
+                'ordering': ('created',),
+            },
+        ),
+        migrations.AddIndex(
+            model_name='chatmessage',
+            index=models.Index(fields=['tg_id', 'created'], name='core_chatm_tg_id_created_idx'),
         ),
         migrations.CreateModel(
             name='Lead',
@@ -47,7 +96,7 @@ class Migration(migrations.Migration):
                 ('contact_phone', models.CharField(blank=True, default='', max_length=32, verbose_name='Contact phone')),
                 ('first_contact_date', models.DateField(blank=True, null=True, verbose_name='First contact date')),
                 ('note', models.TextField(blank=True, default='', verbose_name='Note')),
-                ('status', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='leads', to='core.status', verbose_name='Status')),
+                ('status', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='leads', to='core.leadstatus', verbose_name='Status')),
             ],
             options={
                 'verbose_name': 'Lead',

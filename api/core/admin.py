@@ -11,8 +11,8 @@ from core.translations import status_display, translate
 
 @admin.register(LeadStatus)
 class LeadStatusAdmin(admin.ModelAdmin):
-    list_display = ("name", "translated_name", "color", "order", "created", "modified")
-    list_editable = ("color", "order")
+    list_display = ("name", "translated_name", "color", "sort_order", "created", "modified")
+    list_editable = ("color", "sort_order")
     search_fields = ("name",)
 
     @admin.display(description=translate("status_name"))
