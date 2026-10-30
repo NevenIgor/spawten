@@ -11,7 +11,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-RUN adduser --disabled-password --gecos "" botuser
+RUN adduser --disabled-password --gecos "" botuser \
+    && mkdir -p /media && chown -R botuser:botuser /media
 USER botuser
 
 CMD ["python", "-m", "bot"]
