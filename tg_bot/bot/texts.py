@@ -34,7 +34,7 @@ def text(pair: dict[str, str]) -> str:
 # Shown on /start when the user has NO record in DB or status is 'visitor'.
 WELCOME = _pair(
     "Test welcome message",
-    "Тестовое приветственное сообщение",
+    """Тестовое приветственное сообщение""",
 )
 
 # Shown on /start when the user already has a submitted request.
@@ -57,7 +57,7 @@ BTN_BACK = _pair("◀ Back", "◀ Назад")
 BTN_SUBMIT = _pair("📨 Submit request", "📨 Отправить заявку")
 BTN_EDIT = _pair("✏️ Edit", "✏️ Изменить")
 BTN_CANCEL = _pair("❌ Cancel", "❌ Отмена")
-BTN_NEW_OR_SKIP = _pair("⏭ Enter new / Skip", "⏭ Ввести новое / Пропустить")
+BTN_NEW_OR_SKIP = _pair("⏭ Enter new / Skip", "⏭ Пропустить")
 
 # --------------------------------------------- form step questions (by key)
 QUESTIONS = {
