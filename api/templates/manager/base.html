@@ -9,6 +9,12 @@
 <body>
 <header class="topbar">
   <a class="brand" href="/manager/">{{ t.mgr.dashboard_title }}</a>
+  <nav class="mainnav">
+    <a class="nav-link {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}"
+       href="/manager/">{{ t.mgr.nav_leads }}</a>
+    <a class="nav-link {% if request.resolver_match.url_name == 'manager_stats' %}active{% endif %}"
+       href="/manager/stats/">{{ t.mgr.nav_stats }}</a>
+  </nav>
   <div class="spacer"></div>
   {% if user.is_authenticated %}
     <span class="who">{{ user.get_username }}</span>

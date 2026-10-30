@@ -23,6 +23,7 @@ urlpatterns = [
     path("manager/login/", views_manager.login_view, name="manager_login"),
     path("manager/logout/", views_manager.logout_view, name="manager_logout"),
     path("manager/", views_manager.dashboard, name="manager_dashboard"),
+    path("manager/stats/", views_manager.stats_view, name="manager_stats"),
     path("manager/api/new-cards/", views_manager.new_cards, name="manager_new_cards"),
     path("manager/lead/<uuid:pk>/", views_manager.lead_detail_view, name="manager_lead_detail"),
     path("manager/lead/<uuid:pk>/status/", views_manager.lead_set_status, name="manager_lead_status"),
