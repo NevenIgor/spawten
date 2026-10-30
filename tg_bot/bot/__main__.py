@@ -4,7 +4,9 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
+from redis.asyncio import Redis
 
 from bot.chat_bridge import get_bridge
 from bot.config import Config
@@ -22,7 +24,20 @@ async def main() -> None:
         raise SystemExit(1)
 
     bot = Bot(token=config.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    storage = RedisStorage(redis=config.redis_url)
+    # RedisStorage requires an actual Redis client instance — passing the URL
+    # string breaks at first update ("'str' object has no attribute 'get'").
+    redis_client: Redis | None = None
+    try:
+        redis_client = Redis.from_url(config.redis_url)
+        await redis_client.ping()
+        storage: MemoryStorage | RedisStorage = RedisStorage(redis=redis_client)
+        logger.info("FSM storage: Redis (%s)", config.redis_url)
+    except Exception as exc:  # noqa: BLE001
+        if redis_client is not None:
+            await redis_client.aclose()
+            redis_client = None
+        storage = MemoryStorage()
+        logger.warning("Redis unavailable (%s); falling back to in-memory FSM storage.", exc)
     dp = Dispatcher(storage=storage)
     register_routers(dp)
 
