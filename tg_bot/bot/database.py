@@ -52,7 +52,50 @@ def configure_django() -> None:
             DEFAULT_AUTO_FIELD="django.db.models.BigAutoField",
         )
     django.setup()
+
+    # The bot shares the api project's database but must not depend on the
+    # ``api`` service having run its startup migrations: if the tables are
+    # missing (fresh/empty Postgres volume, or api failed to migrate), apply
+    # the core migrations here once so ORM writes (e.g. save_lead_from_form)
+    # don't fail with "relation \"core_lead\" does not exist".
+    _ensure_schema()
     _configured = True
+
+
+def _ensure_schema() -> None:
+    """Apply pending migrations if the core tables are missing."""
+    import logging
+
+    from django.core.exceptions import ImproperlyConfigured
+    from django.db import connection
+    from django.db.migrations.executor import MigrationExecutor
+
+    log = logging.getLogger(__name__)
+    try:
+        # Backend-agnostic check whether the core tables already exist.
+        with connection.cursor() as cursor:
+            names = connection.introspection.table_names(cursor)
+        if "core_lead" in names:
+            return
+        executor = MigrationExecutor(connection)
+        # Migrate only the shared `core` app (plus its dependencies) — never
+        # unrelated apps that may exist in the same database.
+        targets = [
+            node for node in executor.loader.graph.leaf_nodes()
+            if node[0] == "core"
+        ]
+        plan = executor.migration_plan(targets)
+        if plan:
+            log.info("Bot: core tables missing — applying %d migration(s)", len(plan))
+            executor.migrate(targets)
+            log.info("Bot: migrations applied successfully")
+    except ImproperlyConfigured:
+        raise
+    except Exception:  # pragma: no cover - network/db issues must not crash the bot
+        log.exception(
+            "Bot: automatic migration failed; run "
+            "'docker compose exec api python manage.py migrate' manually"
+        )
 
 
 configure_django()
