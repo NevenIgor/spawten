@@ -95,7 +95,9 @@ async def _ask_step(target_msg: Message | None, state: FSMContext, index: int,
             # 'Enter new / Skip' is meaningless here — typing always enters new.
             hint += " " + _tr(tx.HINT_TYPE_TO_REPLACE)
         text += f"\n\n<i>{hint}</i>"
-    elif step.get("skippable"):
+    elif step.get("skippable") and not (step["required"] and edit_mode and prev):
+        # Required steps that already have an answer (edit flow) must not show
+        # a Skip button — the value cannot be dropped/emptied.
         kb = skip_kb()
 
     if from_callback and cb and cb.message:
