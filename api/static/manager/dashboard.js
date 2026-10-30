@@ -77,4 +77,29 @@
   }
 
   setInterval(poll, 5000);
+
+  /* ---- filter UX: auto-submit on change, Enter triggers search ---- */
+  var form = document.getElementById("filter-form");
+  if (form) {
+    form.querySelectorAll("select").forEach(function (sel) {
+      sel.addEventListener("change", function () { form.submit(); });
+    });
+    form.querySelectorAll(".chip").forEach(function (chip) {
+      chip.addEventListener("click", function (ev) {
+        ev.preventDefault(); // toggle manually to avoid double-toggle of the input
+        var input = chip.querySelector(".chip-input");
+        var wasChecked = input.checked;
+        var anyChecked = form.querySelectorAll(".chip-input:checked").length > 0;
+        // clicking a checked chip when it is the only active one clears filters
+        if (wasChecked && anyChecked &&
+            form.querySelectorAll(".chip-input:checked").length === 1) {
+          input.checked = false;
+        } else {
+          input.checked = !wasChecked;
+        }
+        chip.classList.toggle("chip-on", input.checked);
+        form.submit();
+      });
+    });
+  }
 })();
