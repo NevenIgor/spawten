@@ -1,15 +1,20 @@
-"""Create the default lead statuses (idempotent)."""
+"""Create the default lead statuses (idempotent).
+
+Канонические статусы и цвета карточек интерфейса менеджера:
+
+* visitor -> бледно-жёлтый
+* order   -> зелёный
+* work    -> синий
+* lead    -> красный
+"""
 from django.core.management.base import BaseCommand
 
-from core.models import Status
-
-DEFAULT_STATUSES = ["visitor", "order", "contacted", "in progress", "client", "archived"]
+from core.models import LeadStatus
 
 
 class Command(BaseCommand):
-    help = "Create default statuses used by the bot and admin."
+    help = "Create default lead statuses used by the bot and manager UI."
 
     def handle(self, *args, **options):
-        for name in DEFAULT_STATUSES:
-            obj, created = Status.objects.get_or_create(name=name)
-            self.stdout.write(f"{'created' if created else 'exists'}: {name}")
+        for status in LeadStatus.ensure_canonical():
+            self.stdout.write(f"ok: {status.name} ({status.color})")
