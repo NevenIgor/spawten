@@ -98,6 +98,45 @@ def upsert_lead_on_start(tg_id: int) -> bool:
     return created
 
 
+def has_filled_request(tg_id: int) -> bool:
+    """Return True if the user has a record that is NOT missing/`visitor`.
+
+    Used on /start to decide which button to show:
+      * no record or status == 'visitor'  -> 'Fill in the request'
+      * any other status                  -> 'View request'
+    """
+    lead = Lead.objects.filter(tg_id=tg_id).first()
+    if lead is None:
+        return False
+    visitor = get_visitor_status()
+    if lead.status_id is None:
+        return False
+    if visitor is not None and lead.status_id == visitor.id:
+        return False
+    return lead.status.name != VISITOR_STATUS_NAME
+
+
+def get_lead_snapshot(tg_id: int) -> dict | None:
+    """Return a plain dict of the stored lead data (for the 'View request')."""
+    lead = Lead.objects.filter(tg_id=tg_id).first()
+    if lead is None:
+        return None
+    return {
+        "relative_full_name": lead.relative_full_name,
+        "relative_birth_date": lead.relative_birth_date,
+        "relative_workplace": lead.relative_workplace,
+        "relative_location": lead.relative_location,
+        "photo": lead.photo.name if lead.photo else "",
+        "additional_info": lead.additional_info,
+        "additional_media": lead.additional_media.name if lead.additional_media else "",
+        "relationship": lead.relationship,
+        "full_name": lead.full_name,
+        "workplace": lead.workplace,
+        "contact_phone": lead.contact_phone,
+        "status": lead.status.name if lead.status else "",
+    }
+
+
 def _today():
     from datetime import date
 

@@ -1,5 +1,12 @@
-"""FSM states and step definitions for the multi-step lead form."""
+"""FSM states and step definitions for the multi-step lead form.
+
+User-visible strings (``question`` / ``label``) are translation keys resolved
+through :mod:`bot.i18n` lazily via :func:`step_question` / :func:`step_label`,
+so switching languages never breaks the internal keys used by handlers.
+"""
 from aiogram.fsm.state import State, StatesGroup
+
+from bot.i18n import t
 
 
 class LeadForm(StatesGroup):
@@ -22,32 +29,32 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.relative_full_name,
         "key": "relative_full_name",
-        "label": "Relative full name",
-        "question": "Full name of the relative (Ivanov Ivan Ivanovich)",
+        "label_key": "label_relative_full_name",
+        "question_key": "q_relative_full_name",
         "kind": "text",
         "required": True,
     },
     {
         "state": LeadForm.relative_birth_date,
         "key": "relative_birth_date",
-        "label": "Relative birth date",
-        "question": "Date of birth (DD.MM.YYYY)",
+        "label_key": "label_relative_birth_date",
+        "question_key": "q_relative_birth_date",
         "kind": "date",
         "required": True,
     },
     {
         "state": LeadForm.relative_workplace,
         "key": "relative_workplace",
-        "label": "Relative workplace",
-        "question": "Place of work of the relative",
+        "label_key": "label_relative_workplace",
+        "question_key": "q_relative_workplace",
         "kind": "text",
         "required": False,
     },
     {
         "state": LeadForm.relative_location,
         "key": "relative_location",
-        "label": "Relative location",
-        "question": "Location of the relative",
+        "label_key": "label_relative_location",
+        "question_key": "q_relative_location",
         "kind": "text",
         "required": False,
         "skippable": True,
@@ -55,8 +62,8 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.photo,
         "key": "photo",
-        "label": "Relative photo",
-        "question": "Photo of the relative\nAttach a photo or press 'Skip'",
+        "label_key": "label_photo",
+        "question_key": "q_photo",
         "kind": "photo",
         "required": False,
         "skippable": True,
@@ -64,11 +71,8 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.additional_info,
         "key": "additional_info",
-        "label": "Additional info",
-        "question": (
-            "Additional information\n"
-            "Send text, a photo, a video note, a video — or press 'Skip'"
-        ),
+        "label_key": "label_additional_info",
+        "question_key": "q_additional_info",
         "kind": "media_or_text",
         "required": False,
         "skippable": True,
@@ -76,35 +80,32 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.relationship,
         "key": "relationship",
-        "label": "Relationship",
-        "question": (
-            "Who are you to the relative?\n"
-            "(choose one of the options or type your own variant)"
-        ),
+        "label_key": "label_relationship",
+        "question_key": "q_relationship",
         "kind": "relationship",
         "required": False,
     },
     {
         "state": LeadForm.full_name,
         "key": "full_name",
-        "label": "Your full name",
-        "question": "Your full name",
+        "label_key": "label_full_name",
+        "question_key": "q_full_name",
         "kind": "text",
         "required": True,
     },
     {
         "state": LeadForm.workplace,
         "key": "workplace",
-        "label": "Your workplace",
-        "question": "What do you do? / Where do you work?",
+        "label_key": "label_workplace",
+        "question_key": "q_workplace",
         "kind": "text",
         "required": False,
     },
     {
         "state": LeadForm.contact_phone,
         "key": "contact_phone",
-        "label": "Contact phone",
-        "question": "Your contact phone number",
+        "label_key": "label_contact_phone",
+        "question_key": "q_contact_phone",
         "kind": "phone",
         "required": True,
     },
@@ -115,3 +116,13 @@ REVIEW_STATE = LeadForm.review
 STEP_BY_KEY = {s["key"]: s for s in STEPS}
 STATE_TO_INDEX = {s["state"]: i for i, s in enumerate(STEPS)}
 INDEX_TO_STATE = {i: s["state"] for i, s in enumerate(STEPS)}
+
+
+def step_question(step: dict) -> str:
+    """Return the translated question text for a step."""
+    return t(step["question_key"])
+
+
+def step_label(step: dict) -> str:
+    """Return the translated review-screen label for a step."""
+    return t(step["label_key"])
