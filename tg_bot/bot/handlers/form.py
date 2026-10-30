@@ -12,6 +12,7 @@ from aiogram.types import CallbackQuery, Message
 from bot.database import get_lead_snapshot, save_lead_from_form
 from bot.db_utils import run_sync
 from bot.fsm import REVIEW_STATE, STEPS, step_label, step_question
+from bot.handlers.start import publish_to_manager_chat
 from bot import texts as tx
 from bot.texts import text as _tr
 from bot.keyboards import (
