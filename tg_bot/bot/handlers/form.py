@@ -254,6 +254,24 @@ async def handle_media(message: Message, state: FSMContext, bot) -> None:
         await _advance(message, state, index)
         return
 
+    # Media sent on a text-only step (e.g. photo on the 'additional info' question)
+    if step["kind"] == "text" and not step["required"]:
+        if message.photo:
+            file_id, kind = message.photo[-1].file_id, "photo"
+        elif message.video:
+            file_id, kind = message.video.file_id, "video"
+        elif message.video_note:
+            file_id, kind = message.video_note.file_id, "video_note"
+        elif message.animation:
+            file_id, kind = message.animation.file_id, "animation"
+        else:
+            file_id, kind = message.document.file_id, "document"
+        path = await _download(bot, file_id, kind)
+        await state.update_data({step["key"]: "", step["key"] + "_media": path})
+        await message.answer("✅ Attachment received!")
+        await _advance(message, state, index)
+        return
+
     await message.answer("Please send text for this step (or press Skip).")
 
 

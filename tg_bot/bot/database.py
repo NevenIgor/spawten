@@ -60,13 +60,21 @@ configure_django()
 from core.models import Lead, Status  # noqa: E402
 
 VISITOR_STATUS_NAME = "visitor"
+ORDER_STATUS_NAME = "order"
+
+
+def get_status(name: str) -> Status | None:
+    """Return a Status by name, creating it on the fly if it is missing."""
+    status, _created = Status.objects.get_or_create(name=name)
+    return status
 
 
 def get_visitor_status() -> Status | None:
-    try:
-        return Status.objects.filter(name=VISITOR_STATUS_NAME).first()
-    except Exception:
-        return None
+    return get_status(VISITOR_STATUS_NAME)
+
+
+def get_order_status() -> Status | None:
+    return get_status(ORDER_STATUS_NAME)
 
 
 def upsert_lead_on_start(tg_id: int) -> bool:
@@ -129,8 +137,8 @@ def save_lead_from_form(
     lead.full_name = full_name or lead.full_name
     lead.workplace = workplace
     lead.contact_phone = contact_phone
-    if lead.status_id is None:
-        lead.status = get_visitor_status()
+    # Submitted request: move the status from 'visitor' to 'order'.
+    lead.status = get_order_status()
     if lead.first_contact_date is None:
         lead.first_contact_date = _today()
     lead.save()

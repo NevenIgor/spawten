@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 
 from core.models import Status
 
-DEFAULT_STATUSES = ["visitor", "contacted", "in progress", "client", "archived"]
+DEFAULT_STATUSES = ["visitor", "order", "contacted", "in progress", "client", "archived"]
 
 
 class Command(BaseCommand):
