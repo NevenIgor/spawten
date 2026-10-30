@@ -10,6 +10,7 @@ CANCEL_CB = "form:cancel"
 PREV_ANSWER_PREFIX = "form:prev:"
 
 START_FILL_CB = "form:start"
+VIEW_REQUEST_CB = "form:view"
 
 
 def start_kb() -> InlineKeyboardMarkup:
@@ -17,6 +18,15 @@ def start_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Fill in the data", callback_data=START_FILL_CB)]
+        ]
+    )
+
+
+def view_request_kb() -> InlineKeyboardMarkup:
+    """Keyboard for users whose lead already exists with a non-visitor status."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="View request", callback_data=VIEW_REQUEST_CB)]
         ]
     )
 

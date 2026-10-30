@@ -9,7 +9,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from bot.database import save_lead_from_form
+from bot.database import get_lead_snapshot, save_lead_from_form
 from bot.db_utils import run_sync
 from bot.fsm import REVIEW_STATE, STEPS
 from bot.keyboards import (
@@ -19,12 +19,13 @@ from bot.keyboards import (
     SKIP_CB,
     START_FILL_CB,
     SUBMIT_CB,
+    VIEW_REQUEST_CB,
     previous_answers_kb,
     relationship_kb,
     review_kb,
     skip_kb,
 )
-from bot.texts import SUBMITTED
+from bot.texts import NO_REQUEST, SUBMITTED, VIEW_REQUEST_HEADER, WELCOME_SEEN
 from bot.validation import format_date, parse_date, validate_phone
 
 logger = logging.getLogger(__name__)
@@ -366,3 +367,40 @@ async def cb_edit(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.message.answer("Let's correct the data — each step will show "
                             "your previous answer.")
     await _ask_step(None, state, 0, from_callback=True, cb=cb)
+
+
+# ------------------------------------------------------------------ view request
+
+
+async def _send_request_snapshot(target: Message) -> None:
+    """Render the saved lead from the DB and send it to the user."""
+    try:
+        rows = await run_sync(get_lead_snapshot, target.from_user.id)
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to load lead snapshot")
+        await target.answer("Something went wrong while loading your request. "
+                            "Please try again later.")
+        return
+
+    if not rows:
+        await target.answer(NO_REQUEST)
+        return
+
+    lines = [f"<b>{VIEW_REQUEST_HEADER}</b>", ""]
+    for label, value in rows:
+        escaped_value = (
+            str(value)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        lines.append(f"<b>{label}:</b> {escaped_value}")
+    await target.answer("\n".join(lines))
+
+
+@router.callback_query(StateFilter(None), F.data == VIEW_REQUEST_CB)
+async def cb_view_request(cb: CallbackQuery) -> None:
+    """'View request' button: show the data already saved in the database."""
+    await cb.answer()
+    if cb.message:
+        await _send_request_snapshot(cb.message)
