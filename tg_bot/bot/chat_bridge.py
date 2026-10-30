@@ -26,6 +26,9 @@ import asyncio
 import logging
 from urllib.parse import urlparse
 
+from channels_redis.core import RedisChannelLayer
+from redis.asyncio import ConnectionPool
+
 logger = logging.getLogger(__name__)
 
 BOT_OUTGOING_CHANNEL = "bot_outgoing"
@@ -48,14 +51,63 @@ def _layer_kwargs(redis_url: str) -> dict:
 class ChatBridge:
     def __init__(self, redis_url: str):
         self._redis_kwargs = _layer_kwargs(redis_url)
+        self._pool = ConnectionPool.from_url(redis_url)
         self._layer = None
+        self._recv_layer = None
 
     async def _get_layer(self):
-        if self._layer is None:
-            from channels_redis.core import RedisChannelLayer
+        """RedisChannelLayer для редких исходящих публикаций (долгоживущий).
 
+        Долгоживущий singleton переживает кратковременные сбои/перезапуски
+        Redis, после чего его пул соединений остаётся «мёртвым» и
+        ``group_send`` молча падал в исключение — сообщения пользователя
+        переставали долетать до веб-чата. Поэтому перед публикацией
+        выполняем дешёвый PING собственным пулом: если он не прошёл — все
+        кэшированные соединения выброшены и слой пересоздаётся заново.
+        """
+        if self._layer is None:
             self._layer = RedisChannelLayer(**self._redis_kwargs)
+            return self._layer
+        try:
+            conn = await self._pool.get_connection()
+            await asyncio.wait_for(conn.ping(), timeout=2)
+            self._pool.release(conn)
+        except Exception:  # noqa: BLE001 - dead pool after a Redis outage
+            old = self._layer
+            self._layer = RedisChannelLayer(**self._redis_kwargs)
+            try:
+                await old.close_pools()
+            except Exception:  # noqa: BLE001 - best effort cleanup
+                pass
         return self._layer
+
+    async def _get_recv_layer(self):
+        """Долгоживущий слой для слушателя ``listen_outgoing``.
+
+        Его нельзя пересоздавать на каждый цикл: подписка группы
+        ``bot_outgoing`` привязана к каналу конкретного слоя, и новый слой
+        терял бы накопленные в Redis сообщения между reconnect'ами.
+        Но после сбоя Redis пул «умирает» — поэтому перед (пере)подпиской
+        проверяем соединение дешёвым PING и при неудаче заменяем слой
+        свежим, закрывая старый.
+        """
+        if self._recv_layer is not None:
+            try:
+                conn = await self._pool.get_connection()
+                await asyncio.wait_for(conn.ping(), timeout=2)
+                self._pool.release(conn)
+                return self._recv_layer
+            except Exception:  # noqa: BLE001 - dead pool after a Redis outage
+                old = self._recv_layer
+        else:
+            old = None
+        self._recv_layer = RedisChannelLayer(**self._redis_kwargs)
+        if old is not None:
+            try:
+                await old.close_pools()
+            except Exception:  # noqa: BLE001 - best effort cleanup
+                pass
+        return self._recv_layer
 
     # ------------------------------------------------------------- incoming
     async def publish_incoming(self, tg_id: int, *, msg_id: str = "", text: str,
@@ -92,7 +144,10 @@ class ChatBridge:
         backoff = 1.0
         while not stop.is_set():
             try:
-                layer = await self._get_layer()
+                # Долгоживущий recv-слой: подписка группы bot_outgoing
+                # привязана к каналу конкретного слоя, новый слой на каждом
+                # reconnect терял бы накопленные в Redis сообщения.
+                layer = await self._get_recv_layer()
                 channel = await layer.new_channel(BOT_OUTGOING_CHANNEL)
                 await layer.group_add(BOT_OUTGOING_CHANNEL, channel)
                 logger.info("Bot outgoing-chat listener subscribed (%s).", channel)
