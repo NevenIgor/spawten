@@ -1,5 +1,7 @@
-"""Inline keyboards for the lead form FSM."""
+"""Inline keyboards for the lead form FSM (all labels come from bot.i18n)."""
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from bot.i18n import t
 
 SKIP_CB = "form:skip"
 RELATIONSHIP_PREFIX = "form:rel:"
@@ -10,46 +12,72 @@ CANCEL_CB = "form:cancel"
 PREV_ANSWER_PREFIX = "form:prev:"
 
 START_FILL_CB = "form:start"
+VIEW_REQUEST_CB = "form:view"
 
 
 def start_kb() -> InlineKeyboardMarkup:
-    """Welcome keyboard with a single 'Fill in the data' button."""
+    """Welcome keyboard for a new/visitor user: 'Fill in the request'."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Fill in the data", callback_data=START_FILL_CB)]
+            [InlineKeyboardButton(text=t("btn_fill_request"), callback_data=START_FILL_CB)]
         ]
     )
 
 
+def existing_kb() -> InlineKeyboardMarkup:
+    """Welcome keyboard for a user with a submitted request: 'View request'."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t("btn_view_request"), callback_data=VIEW_REQUEST_CB)]
+        ]
+    )
+
+
+def fill_request_kb() -> InlineKeyboardMarkup:
+    """Standalone 'Fill in the request' button (e.g. after viewing fails)."""
+    return start_kb()
+
+
 def skip_kb(back: bool = False) -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(text="⏭ Skip", callback_data=SKIP_CB)]]
+    rows = [[InlineKeyboardButton(text=t("btn_skip"), callback_data=SKIP_CB)]]
     if back:
-        rows.append([InlineKeyboardButton(text="◀ Back", callback_data=BACK_CB)])
+        rows.append([InlineKeyboardButton(text=t("btn_back"), callback_data=BACK_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def relationship_kb(prior_value: str | None = None) -> InlineKeyboardMarkup:
-    """Step 7: preset variants + free text; prior answer is highlighted."""
-    variants = ["Wife", "Mother", "Father", "Sister", "Son", "Daughter"]
+    """Step 7: preset variants + free text; prior answer is highlighted.
+
+    Button labels are translated, but callback_data keeps the canonical
+    English value so stored DB data stays consistent across languages.
+    """
+    variants = [
+        ("Wife", t("rel_wife")),
+        ("Mother", t("rel_mother")),
+        ("Father", t("rel_father")),
+        ("Sister", t("rel_sister")),
+        ("Son", t("rel_son")),
+        ("Daughter", t("rel_daughter")),
+    ]
     rows = []
     row: list[InlineKeyboardButton] = []
-    for v in variants:
-        label = f"✅ {v}" if prior_value and prior_value.lower() == v.lower() else v
-        row.append(InlineKeyboardButton(text=label, callback_data=f"form:rel:{v}"))
+    for value, label in variants:
+        display = f"✅ {label}" if prior_value and prior_value.lower() == value.lower() else label
+        row.append(InlineKeyboardButton(text=display, callback_data=f"{RELATIONSHIP_PREFIX}{value}"))
         if len(row) == 3:
             rows.append(row)
             row = []
     if row:
         rows.append(row)
-    rows.append([InlineKeyboardButton(text="⏭ Skip", callback_data=SKIP_CB)])
+    rows.append([InlineKeyboardButton(text=t("btn_skip"), callback_data=SKIP_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def review_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📨 Submit request", callback_data=SUBMIT_CB)],
-            [InlineKeyboardButton(text="✏️ Edit", callback_data=EDIT_CB)],
+            [InlineKeyboardButton(text=t("btn_submit"), callback_data=SUBMIT_CB)],
+            [InlineKeyboardButton(text=t("btn_edit"), callback_data=EDIT_CB)],
         ]
     )
 
@@ -57,7 +85,7 @@ def review_kb() -> InlineKeyboardMarkup:
 def cancel_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Cancel", callback_data=CANCEL_CB)]
+            [InlineKeyboardButton(text=t("btn_cancel"), callback_data=CANCEL_CB)]
         ]
     )
 
@@ -73,5 +101,5 @@ def previous_answers_kb(options: list[tuple[int, str]]) -> InlineKeyboardMarkup:
         rows.append(
             [InlineKeyboardButton(text=f"{short}", callback_data=f"{PREV_ANSWER_PREFIX}{step}")]
         )
-    rows.append([InlineKeyboardButton(text="⏭ Enter new / Skip", callback_data=SKIP_CB)])
+    rows.append([InlineKeyboardButton(text=t("btn_new_or_skip"), callback_data=SKIP_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
