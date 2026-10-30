@@ -5,7 +5,7 @@ no translation layer; translations live in the Django subsystem).
 """
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.texts import LABELS, QUESTIONS, text
+from bot.texts import LABELS, QUESTIONS, text  # noqa: F401 (LABELS/QUESTIONS referenced below)
 
 
 class LeadForm(StatesGroup):
@@ -28,32 +28,32 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.relative_full_name,
         "key": "relative_full_name",
-        "label_key": text(LABELS["relative_full_name"],
-        "question_key": text(QUESTIONS["relative_full_name"],
+        "label_text": LABELS["relative_full_name"],
+        "question_text": QUESTIONS["relative_full_name"],
         "kind": "text",
         "required": True,
     },
     {
         "state": LeadForm.relative_birth_date,
         "key": "relative_birth_date",
-        "label_key": text(LABELS["relative_birth_date"],
-        "question_key": text(QUESTIONS["relative_birth_date"],
+        "label_text": LABELS["relative_birth_date"],
+        "question_text": QUESTIONS["relative_birth_date"],
         "kind": "date",
         "required": True,
     },
     {
         "state": LeadForm.relative_workplace,
         "key": "relative_workplace",
-        "label_key": text(LABELS["relative_workplace"],
-        "question_key": text(QUESTIONS["relative_workplace"],
+        "label_text": LABELS["relative_workplace"],
+        "question_text": QUESTIONS["relative_workplace"],
         "kind": "text",
         "required": False,
     },
     {
         "state": LeadForm.relative_location,
         "key": "relative_location",
-        "label_key": text(LABELS["relative_location"],
-        "question_key": text(QUESTIONS["relative_location"],
+        "label_text": LABELS["relative_location"],
+        "question_text": QUESTIONS["relative_location"],
         "kind": "text",
         "required": False,
         "skippable": True,
@@ -61,8 +61,8 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.photo,
         "key": "photo",
-        "label_key": text(LABELS["photo"],
-        "question_key": text(QUESTIONS["photo"],
+        "label_text": LABELS["photo"],
+        "question_text": QUESTIONS["photo"],
         "kind": "photo",
         "required": False,
         "skippable": True,
@@ -70,8 +70,8 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.additional_info,
         "key": "additional_info",
-        "label_key": text(LABELS["additional_info"],
-        "question_key": text(QUESTIONS["additional_info"],
+        "label_text": LABELS["additional_info"],
+        "question_text": QUESTIONS["additional_info"],
         "kind": "media_or_text",
         "required": False,
         "skippable": True,
@@ -79,32 +79,32 @@ STEPS: list[dict] = [
     {
         "state": LeadForm.relationship,
         "key": "relationship",
-        "label_key": text(LABELS["relationship"],
-        "question_key": text(QUESTIONS["relationship"],
+        "label_text": LABELS["relationship"],
+        "question_text": QUESTIONS["relationship"],
         "kind": "relationship",
         "required": False,
     },
     {
         "state": LeadForm.full_name,
         "key": "full_name",
-        "label_key": text(LABELS["full_name"],
-        "question_key": text(QUESTIONS["full_name"],
+        "label_text": LABELS["full_name"],
+        "question_text": QUESTIONS["full_name"],
         "kind": "text",
         "required": True,
     },
     {
         "state": LeadForm.workplace,
         "key": "workplace",
-        "label_key": text(LABELS["workplace"],
-        "question_key": text(QUESTIONS["workplace"],
+        "label_text": LABELS["workplace"],
+        "question_text": QUESTIONS["workplace"],
         "kind": "text",
         "required": False,
     },
     {
         "state": LeadForm.contact_phone,
         "key": "contact_phone",
-        "label_key": text(LABELS["contact_phone"],
-        "question_key": text(QUESTIONS["contact_phone"],
+        "label_text": LABELS["contact_phone"],
+        "question_text": QUESTIONS["contact_phone"],
         "kind": "phone",
         "required": True,
     },
@@ -118,10 +118,10 @@ INDEX_TO_STATE = {i: s["state"] for i, s in enumerate(STEPS)}
 
 
 def step_question(step: dict) -> str:
-    """Return the question text for a step."""
-    return step["question_key"]
+    """Return the localized question text for a step."""
+    return text(step["question_text"])
 
 
 def step_label(step: dict) -> str:
-    """Return the review-screen label for a step."""
-    return step["label_key"]
+    """Return the localized review-screen label for a step."""
+    return text(step["label_text"])
