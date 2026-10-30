@@ -5,13 +5,14 @@
 """
 from django.contrib import admin
 
-from core.models import Lead, Status
+from core.models import ChatMessage, Lead, LeadStatus, TelegramProfile
 from core.translations import status_display, translate
 
 
-@admin.register(Status)
-class StatusAdmin(admin.ModelAdmin):
-    list_display = ("name", "translated_name", "created", "modified")
+@admin.register(LeadStatus)
+class LeadStatusAdmin(admin.ModelAdmin):
+    list_display = ("name", "translated_name", "color", "order", "created", "modified")
+    list_editable = ("color", "order")
     search_fields = ("name",)
 
     @admin.display(description=translate("status_name"))
@@ -57,3 +58,20 @@ class LeadAdmin(admin.ModelAdmin):
         }),
         (translate("admin.section_meta"), {"fields": ("id", "created", "modified")}),
     )
+
+
+@admin.register(TelegramProfile)
+class TelegramProfileAdmin(admin.ModelAdmin):
+    list_display = ("tg_id", "username", "first_name", "last_name",
+                    "phone_number", "registered_at", "location", "source")
+    search_fields = ("tg_id", "username", "first_name", "last_name", "phone_number")
+    readonly_fields = ("id", "created", "modified")
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ("created", "tg_id", "direction", "text", "sent_by")
+    list_filter = ("direction",)
+    search_fields = ("tg_id", "text")
+    readonly_fields = ("id", "created", "modified")
+    ordering = ("-created",)
