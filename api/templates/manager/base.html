@@ -1,0 +1,25 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t.mgr.dashboard_title }}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'manager/manager.css' %}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/manager/">{{ t.mgr.dashboard_title }}</a>
+  <div class="spacer"></div>
+  {% if user.is_authenticated %}
+    <span class="who">{{ user.get_username }}</span>
+    <a class="btn btn-ghost" href="/admin/">{{ t.admin.site_header }}</a>
+    <a class="btn btn-ghost" href="/manager/logout/">{{ t.mgr.logout }}</a>
+  {% endif %}
+</header>
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+<script src="{% static 'manager/dashboard.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

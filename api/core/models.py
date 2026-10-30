@@ -40,7 +40,9 @@ class LeadStatus(BaseModel):
         unique=True,
         verbose_name=translate_lazy("status.name"),
     )
-    order = models.PositiveSmallIntegerField(
+    #: NOTE: 'order' is the sorting weight of the status (LeadStatus.CANONICAL).
+    #: The lead's "filled request" (заявка) is the Lead model itself.
+    sort_order = models.PositiveSmallIntegerField(
         default=0,
         verbose_name=translate_lazy("status.order"),
     )
@@ -54,7 +56,7 @@ class LeadStatus(BaseModel):
     class Meta:
         verbose_name = translate_lazy("status")
         verbose_name_plural = translate_lazy("status_plural")
-        ordering = ("order", "name")
+        ordering = ("sort_order", "name")
 
     def __str__(self):
         return self.name
@@ -63,8 +65,10 @@ class LeadStatus(BaseModel):
     def ensure_canonical(cls) -> list["LeadStatus"]:
         """Create/refresh the four canonical statuses (idempotent)."""
         result = []
-        for name, (order, color) in cls.CANONICAL.items():
-            obj, _ = cls.objects.update_or_create(name=name, defaults={"order": order, "color": color})
+        for name, (weight, color) in cls.CANONICAL.items():
+            obj, _ = cls.objects.update_or_create(
+                name=name, defaults={"sort_order": weight, "color": color}
+            )
             result.append(obj)
         return result
 
@@ -173,6 +177,17 @@ class Lead(BaseModel):
 
     def __str__(self):
         return self.full_name or (f"tg:{self.tg_id}" if self.tg_id else str(self.pk))
+
+    @property
+    def telegram_profile(self) -> "TelegramProfile | None":
+        """Telegram data snapshot for this lead's tg_id (cached per instance)."""
+        if not self.tg_id:
+            return None
+        cached = getattr(self, "_telegram_profile_cache", None)
+        if cached is None:
+            cached = TelegramProfile.objects.filter(tg_id=self.tg_id).first()
+            self._telegram_profile_cache = cached
+        return cached
 
     # convenience: translated status label for templates / admin reprs
     def status_display_name(self) -> str:

@@ -145,11 +145,13 @@ def dashboard(request):
 
     context = {
         "page_obj": page_obj,
+        "cards": [_card_payload(lead) for lead in page_obj],
         "total_leads": paginator.count,
         "statuses": statuses,
         "legend": legend,
         "q": q,
         "status_filter": status_filter,
+        "t": _tmap(),
     }
     return render(request, "manager/dashboard.html", context)
 
@@ -218,6 +220,8 @@ def lead_detail_view(request, pk: str):
         "statuses": list(LeadStatus.objects.all()),
         "photo_url": lead.photo.url if lead.photo else "",
         "media_url": lead.additional_media.url if lead.additional_media else "",
+        "fmt_date": _fmt_date,
+        "t": _tmap(),
     }
     return render(request, "manager/lead_detail.html", context)
 

@@ -1,0 +1,67 @@
+{% extends "manager/base.html" %}
+{% block title %}{{ t.mgr.dashboard_title }}{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <h1>{{ t.mgr.dashboard_title }} <span class="count">({{ total_leads }})</span></h1>
+
+  <form class="filters" method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="{{ t.mgr.search_placeholder }}">
+    <select name="status">
+      <option value="">{{ t.mgr.filter_all }}</option>
+      {% for s in statuses %}
+        <option value="{{ s.name }}" {% if status_filter == s.name %}selected{% endif %}>{{ s.label|default:s.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">{{ t.mgr.search_btn }}</button>
+    <a class="btn btn-ghost" href="/manager/">{{ t.mgr.reset_btn }}</a>
+  </form>
+
+  <div class="legend">
+    <span class="legend-title">{{ t.mgr.legend }}:</span>
+    {% for item in legend %}
+      <span class="chip chip-{{ item.color }}">{{ item.label }}</span>
+    {% endfor %}
+  </div>
+
+  <div id="new-cards-banner" class="new-cards hidden"></div>
+</div>
+
+<div id="cards" class="cards">
+  {% for c in cards %}
+    <a class="card card-{{ c.color }}" data-id="{{ c.id }}" data-created="{{ c.created }}"
+       href="/manager/lead/{{ c.id }}/">
+      <div class="card-top">
+        <span class="badge badge-{{ c.color }}">{{ c.status_label }}</span>
+        <span class="created">{{ t.mgr.card_created }}: {{ c.created }}</span>
+      </div>
+      <h3 class="rel-name">{{ c.relative_full_name|default:t.mgr.not_filled }}</h3>
+      <ul class="facts">
+        <li><b>{{ t.lead.relative_birth_date }}:</b> {{ c.relative_birth_date|default:t.mgr.not_filled }}</li>
+        <li><b>{{ t.lead.relative_workplace }}:</b> {{ c.relative_workplace|default:t.mgr.not_filled }}</li>
+        <li><b>{{ t.lead.relative_location }}:</b> {{ c.relative_location|default:t.mgr.not_filled }}</li>
+        <li><b>{{ t.mgr.card_user }}:</b> {{ c.full_name|default:t.mgr.not_filled }}</li>
+        <li><b>{{ t.mgr.card_phone }}:</b> {{ c.contact_phone|default:t.mgr.not_filled }}</li>
+        <li><b>TG:</b> {{ c.tg_username|default:c.tg_id|default:t.mgr.tg_none }}
+            {% if c.tg_phone %}<br><b>{{ t.tgsnapshot.phone_number }}:</b> {{ c.tg_phone }}{% endif %}</li>
+      </ul>
+    </a>
+  {% empty %}
+    <div class="empty">{{ t.mgr.no_leads }}</div>
+  {% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="pager">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-ghost" href="?page={{ page_obj.previous_page_number }}&q={{ q|urlencode }}&status={{ status_filter }}">&laquo;</a>
+  {% endif %}
+  <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a class="btn btn-ghost" href="?page={{ page_obj.next_page_number }}&q={{ q|urlencode }}&status={{ status_filter }}">&raquo;</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+<script id="mgr-i18n" type="application/json">{{ t_json|safe }}</script>
+{% endblock %}
+{% block scripts %}{% endblock %}
