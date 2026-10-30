@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 
 from aiogram import F, Router
-from aiogram.filters import StateFilter
+from aiogram.filters import Filter, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -35,6 +35,24 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 MEDIA_DIR = os.getenv("BOT_MEDIA_DIR", "/media")
+
+
+class DataStartsWith(Filter):
+    """Callback-data prefix filter.
+
+    ``F.data.strstartswith(...)`` silently never matches in aiogram 3.x
+    (MagicFilter has no such operation — it resolves to a nested MagicFilter
+    that always evaluates falsy), so every prefixed button press logged as
+    "Update is not handled". This explicit filter works reliably.
+    """
+
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+
+    async def __call__(self, callback_query: CallbackQuery) -> bool:
+        return isinstance(callback_query.data, str) and callback_query.data.startswith(
+            self.prefix
+        )
 
 
 # ------------------------------------------------------------------ helpers
@@ -318,7 +336,7 @@ async def cb_skip(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(
     StateFilter(*[s["state"] for s in STEPS]),
-    F.data.strstartswith(PREV_ANSWER_PREFIX),
+    DataStartsWith(PREV_ANSWER_PREFIX),
 )
 async def cb_use_previous(cb: CallbackQuery, state: FSMContext) -> None:
     """Edit mode: keep the previously entered value and move to the next step."""
@@ -352,7 +370,7 @@ async def cb_use_previous(cb: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(
     StateFilter(*[s["state"] for s in STEPS]),
-    F.data.strstartswith(RELATIONSHIP_PREFIX),
+    DataStartsWith(RELATIONSHIP_PREFIX),
 )
 async def cb_relationship(cb: CallbackQuery, state: FSMContext) -> None:
     value = cb.data.removeprefix(RELATIONSHIP_PREFIX)
