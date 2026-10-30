@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 
+from bot.chat_bridge import get_bridge
 from bot.config import Config
 from bot.handlers import register_routers
 
@@ -25,10 +26,16 @@ async def main() -> None:
     dp = Dispatcher(storage=storage)
     register_routers(dp)
 
+    # live chat bridge: manager messages typed in the web UI -> Telegram user
+    stop = asyncio.Event()
+    listener = asyncio.create_task(get_bridge(config.redis_url).listen_outgoing(bot, stop))
+
     logger.info("Starting polling...")
     try:
         await dp.start_polling(bot)
     finally:
+        stop.set()
+        listener.cancel()
         await bot.session.close()
 
 

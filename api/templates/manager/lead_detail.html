@@ -1,0 +1,99 @@
+{% extends "manager/base.html" %}
+{% block title %}{{ t.mgr.lead_details }} — {{ lead }}{% endblock %}
+{% block content %}
+<div class="detail-head">
+  <a class="btn btn-ghost" href="/manager/">&larr; {{ t.mgr.back_to_list }}</a>
+  <h1>{{ t.mgr.lead_details }}: {{ lead.full_name|default:lead.relative_full_name|default:t.mgr.not_filled }}</h1>
+  <form method="post" action="/manager/lead/{{ lead.id }}/status/" class="status-form" id="status-form">
+    {% csrf_token %}
+    <label for="status-select">{{ t.mgr.change_status }}:</label>
+    <select id="status-select" name="status">
+      {% for s in statuses %}
+        <option value="{{ s.name }}" {% if lead.status and lead.status.name == s.name %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">{{ t.mgr.save }}</button>
+    <span class="badge badge-{{ lead.status_color }}">{{ lead.status_display_name }}</span>
+    <span id="status-saved" class="saved hidden">{{ t.mgr.saved }} ✓</span>
+  </form>
+</div>
+
+<div class="detail-grid">
+  <section class="panel">
+    <h2>{{ t.mgr.section_lead }}</h2>
+    <dl class="facts-dl">
+      <dt>{{ t.lead.full_name }}</dt><dd>{{ lead.full_name|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.contact_phone }}</dt><dd>{{ lead.contact_phone|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.workplace }}</dt><dd>{{ lead.workplace|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.tg_id }}</dt><dd>{{ lead.tg_id|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.first_contact_date }}</dt><dd>{{ lead.first_contact_date|date:"d.m.Y"|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.note }}</dt><dd>{{ lead.note|default:t.mgr.not_filled }}</dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2>{{ t.mgr.section_relative }}</h2>
+    <dl class="facts-dl">
+      <dt>{{ t.lead.relative_full_name }}</dt><dd>{{ lead.relative_full_name|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.relative_birth_date }}</dt><dd>{{ lead.relative_birth_date|date:"d.m.Y"|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.relationship }}</dt><dd>{{ lead.relationship|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.relative_workplace }}</dt><dd>{{ lead.relative_workplace|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.relative_location }}</dt><dd>{{ lead.relative_location|default:t.mgr.not_filled }}</dd>
+      <dt>{{ t.lead.additional_info }}</dt><dd class="pre">{{ lead.additional_info|default:t.mgr.not_filled }}</dd>
+    </dl>
+    {% if photo_url %}<p><img class="thumb" src="{{ photo_url }}" alt="photo"></p>{% endif %}
+    {% if media_url %}<p><a href="{{ media_url }}" target="_blank">{{ t.mgr.attachment }}</a></p>{% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>{{ t.mgr.section_tg }}</h2>
+    {% if tg_info %}
+      <dl class="facts-dl">
+        <dt>tg_id</dt><dd>{{ tg_info.tg_id }}</dd>
+        <dt>{{ t.tgsnapshot.username }}</dt><dd>{{ tg_info.username|default:t.mgr.tg_none }}</dd>
+        <dt>{{ t.tgsnapshot.phone_number }}</dt><dd>{{ tg_info.phone|default:t.mgr.tg_none }}</dd>
+        <dt>{{ t.tgsnapshot.registered_at }}</dt>
+        <dd>{{ tg_info.registered_at|default:t.mgr.tg_none }}
+            {% if tg_info.registered_estimated %}<i>({{ t.mgr.tg_estimate_note }})</i>{% endif %}</dd>
+        <dt>{{ t.tgsnapshot.location }}</dt><dd>{{ tg_info.location|default:t.mgr.tg_none }}</dd>
+        <dt>{{ t.tgsnapshot.language_code }}</dt><dd>{{ tg_info.language|default:t.mgr.tg_none }}</dd>
+        <dt>{{ t.tgsnapshot.is_premium }}</dt><dd>{% if tg_info.premium %}{{ t.mgr.premium_yes }}{% else %}{{ t.mgr.premium_no }}{% endif %}</dd>
+      </dl>
+      <p><a class="btn btn-ghost" href="{{ tg_info.link }}" target="_blank" rel="noopener">{{ t.mgr.tg_link }} →</a></p>
+    {% else %}
+      <p class="empty">{{ t.mgr.tg_none }}</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>{{ t.mgr.section_service }}</h2>
+    <dl class="facts-dl">
+      <dt>{{ t.mgr.card_created }}</dt><dd>{{ lead.created|date:"d.m.Y H:i" }}</dd>
+      <dt>ID</dt><dd>{{ lead.id }}</dd>
+    </dl>
+  </section>
+
+  <section class="panel chat-panel">
+    <h2>{{ t.mgr.chat_title }}</h2>
+    <p class="hint">{{ t.mgr.chat_hint }}</p>
+    <div id="chat-frame" class="chat-frame" data-tg-id="{{ lead.tg_id|default_if_none:'' }}">
+      <div id="chat-status" class="chat-status"></div>
+      <div id="chat-log" class="chat-log"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" type="text" autocomplete="off"
+               placeholder="{{ t.mgr.chat_input_placeholder }}" {% if not lead.tg_id %}disabled{% endif %}>
+        <button class="btn btn-primary" type="submit" {% if not lead.tg_id %}disabled{% endif %}>{{ t.mgr.chat_send }}</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script id="chat-history" type="application/json">{{ chat_history_json|safe }}</script>
+<script id="mgr-i18n" type="application/json">{{ t_json|safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.MGR_CHAT_WS_PATH = "/ws/manager/chat/";
+</script>
+<script src="/static/manager/chat.js"></script>
+{% endblock %}
