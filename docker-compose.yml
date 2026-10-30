@@ -37,6 +37,7 @@ services:
       - "8000"
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py init_statuses &&
              (python manage.py createsuperuser --noinput || true) &&
              python manage.py collectstatic --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
@@ -47,10 +48,14 @@ services:
     container_name: tg_bot
     restart: unless-stopped
     env_file: .env
-    environment:
-      <<: *app-env
     volumes:
       - ./tg_bot:/bot
+      - ./api:/app/api:ro          # Django core models reused by the bot
+      - media_data:/media          # uploads land in the shared media volume
+    environment:
+      <<: *app-env
+      PYTHONPATH: /bot:/app/api
+      BOT_MEDIA_DIR: /media
     depends_on:
       postgres:
         condition: service_healthy

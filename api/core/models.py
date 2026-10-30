@@ -41,11 +41,11 @@ class Lead(BaseModel):
         default="",
         verbose_name="Relative workplace",
     )
-    relative_location = models.DateField(
-        null=True,
+    relative_location = models.CharField(
+        max_length=255,
         blank=True,
+        default="",
         verbose_name="Relative location",
-        help_text="Defined as a date field per requirements.",
     )
     photo = models.ImageField(
         upload_to="leads/photos/%Y/%m/",
@@ -57,6 +57,13 @@ class Lead(BaseModel):
         blank=True,
         default="",
         verbose_name="Additional info",
+    )
+    additional_media = models.FileField(
+        upload_to="leads/additional/%Y/%m/",
+        null=True,
+        blank=True,
+        verbose_name="Additional media",
+        help_text="Image / video / video note uploaded via the bot.",
     )
     relationship = models.CharField(
         max_length=100,

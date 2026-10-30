@@ -4,9 +4,10 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.redis import RedisStorage
 
 from bot.config import Config
-from bot.handlers.start import router as start_router
+from bot.handlers import register_routers
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,19 @@ async def main() -> None:
 
     config = Config.from_env()
     if not config.bot_token or config.bot_token == "put-your-bot-token-here":
-        logger.error("TELEGRAM_BOT_TOKEN не задан. Укажите токен в файле .env")
+        logger.error("TELEGRAM_BOT_TOKEN is not set. Put the token into .env")
         raise SystemExit(1)
 
     bot = Bot(token=config.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher()
-    dp.include_router(start_router)
+    storage = RedisStorage(redis=config.redis_url)
+    dp = Dispatcher(storage=storage)
+    register_routers(dp)
 
     logger.info("Starting polling...")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 
 if __name__ == "__main__":
