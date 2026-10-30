@@ -32,8 +32,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      elastic:
-        condition: service_healthy
+      # elastic временно закомментирован (контейнер отключён)
+      # elastic:
+      #   condition: service_healthy
     expose:
       - "8000"
     command: >
@@ -108,33 +109,34 @@ services:
       timeout: 5s
       retries: 10
 
-  elastic:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-    container_name: elastic
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - bootstrap.memory_lock=true
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - elastic_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
-      interval: 10s
-      timeout: 10s
-      retries: 20
-      start_period: 30s
+  # --- Временно отключлено: контейнер elasticsearch закомментирован ---
+  # elastic:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+  #   container_name: elastic
+  #   restart: unless-stopped
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - ES_JAVA_OPTS=-Xms512m -Xmx512m
+  #     - bootstrap.memory_lock=true
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #   volumes:
+  #     - elastic_data:/usr/share/elasticsearch/data
+  #   ports:
+  #     - "9200:9200"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 20
+  #     start_period: 30s
 
 volumes:
   postgres_data:
   redis_data:
-  elastic_data:
+  # elastic_data:  # временно отключено вместе с контейнером elastic
   static_data:
   media_data:
