@@ -1,0 +1,26 @@
+{% extends "core/base.html" %}
+{% block title %}Chat — {{ lead.full_name|default:lead.tg_id }}{% endblock %}
+{% block content %}
+<div class="card chat-panel" >
+  <h3>{{ lead.full_name|default:"(no name)" }} <span class="meta">tg_id: {{ lead.tg_id }} · status: {{ lead.status.name|default:"—" }}</span></h3>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <div class="messages" id="messages" data-poll="/api/chats/{{ lead.tg_id }}/">
+    {% for m in messages %}
+      <div class="msg {{ m.direction }}" data-id="{{ m.id }}">{{ m.text }}{% if m.media_path %}<br><img src="/media/{{ m.media_path }}" style="max-width:200px">{% endif %}
+        <div class="meta">{{ m.created|date:"Y-m-d H:i" }}</div>
+      </div>
+    {% empty %}
+      <div class="meta">No messages yet.</div>
+    {% endfor %}
+  </div>
+  <form class="send" method="post">
+    {% csrf_token %}
+    <input type="text" name="text" placeholder="Reply to the user…" autofocus>
+    <button type="submit">Send</button>
+  </form>
+</div>
+<script>
+  const box = document.getElementById('messages');
+  if (box) box.scrollTop = box.scrollHeight;
+</script>
+{% endblock %}

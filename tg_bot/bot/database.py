@@ -58,7 +58,7 @@ def configure_django() -> None:
 
 configure_django()
 
-from core.models import Lead, Status  # noqa: E402
+from core.models import ChatMessage, Lead, Status  # noqa: E402
 
 VISITOR_STATUS_NAME = "visitor"
 ORDER_STATUS_NAME = "order"
@@ -66,7 +66,9 @@ ORDER_STATUS_NAME = "order"
 
 def get_status(name: str) -> Status | None:
     """Return a Status by name, creating it on the fly if it is missing."""
-    status, _created = Status.objects.get_or_create(name=name)
+    status, _created = Status.objects.get_or_create(
+        name=name, defaults={"order_status": name == ORDER_STATUS_NAME}
+    )
     return status
 
 
@@ -209,3 +211,39 @@ def save_lead_from_form(
         lead.first_contact_date = _today()
     lead.save()
     return lead
+
+
+# ------------------------------------------------------------------ chat bridge
+
+
+def save_incoming_message(*, tg_id: int, text: str = "", media_path: str = "") -> None:
+    """Persist a message the user sent to the bot (web UI reads it from DB)."""
+    lead = Lead.objects.filter(tg_id=tg_id).first()
+    ChatMessage.objects.create(
+        lead=lead,
+        tg_id=tg_id,
+        direction=ChatMessage.DIRECTION_INCOMING,
+        text=text,
+        media_path=media_path,
+    )
+
+
+def get_outgoing_messages(tg_id: int, after_iso: str | None, limit: int = 50) -> list[dict]:
+    """Operator replies created after ``after_iso`` that the bot must deliver.
+
+    Used by the Redis listener for catch-up after reconnects and as a safety
+    net when a pub/sub notification was missed.
+    """
+    qs = ChatMessage.objects.filter(
+        tg_id=tg_id, direction=ChatMessage.DIRECTION_OUTGOING
+    ).order_by("created")
+    if after_iso:
+        from django.utils.dateparse import parse_datetime
+
+        ts = parse_datetime(after_iso)
+        if ts is not None:
+            qs = qs.filter(created__gt=ts)
+    return [
+        {"id": str(m.id), "text": m.text, "media_path": m.media_path}
+        for m in qs[:limit]
+    ]

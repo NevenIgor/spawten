@@ -1,12 +1,21 @@
 from django.contrib import admin
 
-from core.models import Lead, Status
+from core.models import ChatMessage, Lead, Status
 
 
 @admin.register(Status)
 class StatusAdmin(admin.ModelAdmin):
-    list_display = ("name", "created", "modified")
+    list_display = ("name", "order_status", "created", "modified")
+    list_editable = ("order_status",)
     search_fields = ("name",)
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ("tg_id", "direction", "text", "is_read", "created")
+    list_filter = ("direction", "is_read")
+    search_fields = ("tg_id", "text")
+    readonly_fields = ("id", "created", "modified")
 
 
 @admin.register(Lead)

@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% load core_extras %}
+{% block title %}Inbox{% endblock %}
+{% block content %}
+<h2>Leads</h2>
+{% for lead in leads %}
+  <div class="card lead-row">
+    <div>
+      <a href="{% url 'core:chat' lead.pk %}"><strong>{{ lead.full_name|default:"(no name)" }}</strong></a>
+      <div class="meta">tg_id: {{ lead.tg_id }} · status: {{ lead.status.name|default:"—" }}</div>
+    </div>
+    {% unread_of unread_counts lead.tg_id as unread %}
+    {% if unread %}<span class="badge unread">{{ unread }} new</span>{% else %}<span class="badge">{{ lead.created|date:"Y-m-d" }}</span>{% endif %}
+  </div>
+{% empty %}
+  <div class="card">No leads yet. Users appear here after they message the bot.</div>
+{% endfor %}
+{% endblock %}

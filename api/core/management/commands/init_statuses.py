@@ -3,13 +3,23 @@ from django.core.management.base import BaseCommand
 
 from core.models import Status
 
-DEFAULT_STATUSES = ["visitor", "order", "contacted", "in progress", "client", "archived"]
+# name -> is order status
+DEFAULT_STATUSES = {
+    "visitor": False,
+    "order": True,
+    "contacted": False,
+    "in progress": False,
+    "client": True,
+    "archived": False,
+}
 
 
 class Command(BaseCommand):
     help = "Create default statuses used by the bot and admin."
 
     def handle(self, *args, **options):
-        for name in DEFAULT_STATUSES:
-            obj, created = Status.objects.get_or_create(name=name)
+        for name, is_order in DEFAULT_STATUSES.items():
+            obj, created = Status.objects.get_or_create(
+                name=name, defaults={"order_status": is_order}
+            )
             self.stdout.write(f"{'created' if created else 'exists'}: {name}")
