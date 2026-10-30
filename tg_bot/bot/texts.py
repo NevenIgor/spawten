@@ -13,7 +13,7 @@
 # Shown on /start when the user has NO record in DB or status is 'visitor'.
 import os
 
-DEFAULT_LANG = "en"
+DEFAULT_LANG = "ru"
 
 # Активный язык сообщений бота: BOT_LANGUAGE=en|ru (по умолчанию en)
 CURRENT_LANG = os.getenv("BOT_LANGUAGE", DEFAULT_LANG).strip().lower()
