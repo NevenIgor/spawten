@@ -64,13 +64,19 @@ async def _ask_step(target_msg: Message | None, state: FSMContext, index: int,
 
     kb = None
     if step["kind"] == "relationship":
-        kb = relationship_kb(prev if edit_mode else None)
+        # No "Skip" on this step: pick a preset variant or type your own.
+        # In edit mode the previous answer gets its own reuse button.
+        kb = relationship_kb(prev, edit_mode=edit_mode and bool(prev))
         if edit_mode and prev:
             text += f"\n\n<i>{_tr(tx.HINT_PREVIOUS_HIGHLIGHTED)}</i>"
     elif edit_mode and prev not in (None, "", []):
         rendered = _render_value(step, prev)
-        kb = previous_answers_kb([(index, rendered)])
-        text += f"\n\n<i>{_tr(tx.HINT_REUSE_PREVIOUS)}</i>"
+        kb = previous_answers_kb([(index, rendered)], allow_skip=not step["required"])
+        hint = _tr(tx.HINT_REUSE_PREVIOUS)
+        if step["required"]:
+            # 'Enter new / Skip' is meaningless here — typing always enters new.
+            hint += " " + _tr(tx.HINT_TYPE_TO_REPLACE)
+        text += f"\n\n<i>{hint}</i>"
     elif step.get("skippable"):
         kb = skip_kb()
 
@@ -318,6 +324,27 @@ async def cb_use_previous(cb: CallbackQuery, state: FSMContext) -> None:
     """Edit mode: keep the previously entered value and move to the next step."""
     index = _current_index(await state.get_state())
     if index is None:
+        await cb.answer()
+        return
+    step = STEPS[index]
+    data = await state.get_data()
+    prev = data.get(step["key"])
+    # 'form:prev:reuse' (relationship keyboard) reuses the stored custom text;
+    # otherwise parse the step number from the callback and verify it matches.
+    suffix = cb.data.removeprefix(PREV_ANSWER_PREFIX)
+    if suffix != "reuse":
+        try:
+            cb_index = int(suffix)
+        except ValueError:
+            await cb.answer()
+            return
+        if cb_index != index:
+            await cb.answer()
+            return
+    has_prev = bool(prev) if isinstance(prev, (list, dict)) else prev not in (None, "")
+    if not has_prev:
+        # Nothing to reuse — tell the user instead of silently doing nothing.
+        await cb.answer(_tr(tx.ERR_NO_PREVIOUS), show_alert=True)
         return
     await cb.answer()
     await _advance(cb, state, index)

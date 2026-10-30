@@ -136,6 +136,10 @@ ERR_REQUIRED = _pair(
     "Это обязательное поле, пожалуйста, введите значение.",
 )
 ERR_NOT_SKIPPABLE = _pair("This field cannot be skipped", "Это поле нельзя пропустить")
+ERR_NO_PREVIOUS = _pair(
+    "There is no previous answer to reuse here.",
+    "Здесь нет прежнего ответа, который можно было бы использовать.",
+)
 ERR_DATE_FORMAT = _pair(
     "❌ Wrong date format. Please enter the date as DD.MM.YYYY (example: 15.06.1980).",
     "❌ Неверный формат даты. Введите дату как ДД.ММ.ГГГГ (пример: 15.06.1980).",
@@ -165,6 +169,10 @@ HINT_PREVIOUS_HIGHLIGHTED = _pair(
 HINT_REUSE_PREVIOUS = _pair(
     "You can reuse your previous answer:",
     "Можно использовать прежний ответ:",
+)
+HINT_TYPE_TO_REPLACE = _pair(
+    "(this step is required — type a message to enter a new value)",
+    "(шаг обязателен — чтобы ввести новое, просто напишите сообщение)",
 )
 RENDER_ATTACHMENT = _pair("📎 attachment", "📎 вложение")
 RENDER_EMPTY = _pair("—", "—")
