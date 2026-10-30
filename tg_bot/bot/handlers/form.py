@@ -24,6 +24,7 @@ from bot.keyboards import (
     review_kb,
     skip_kb,
 )
+from bot.texts import SUBMITTED
 from bot.validation import format_date, parse_date, validate_phone
 
 logger = logging.getLogger(__name__)
@@ -353,7 +354,7 @@ async def cb_submit(cb: CallbackQuery, state: FSMContext) -> None:
         return
 
     await state.clear()
-    await cb.message.edit_text("✅ Thank you! Your request has been submitted.")
+    await cb.message.edit_text(SUBMITTED)
     await cb.answer()
 
 
