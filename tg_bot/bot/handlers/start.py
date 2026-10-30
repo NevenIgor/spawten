@@ -36,6 +36,7 @@ async def publish_to_manager_chat(message: Message, *, body: str | None = None,
         )
         await get_bridge(Config.from_env().redis_url).publish_incoming(
             tg_id,
+            msg_id=str(msg.pk),
             text=text_body,
             time_str=msg.created.strftime("%d.%m.%Y %H:%M:%S"),
             attachment_kind=attachment_kind,

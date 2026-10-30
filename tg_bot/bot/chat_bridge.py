@@ -1,19 +1,28 @@
 """Real-time bridge between the bot and the manager web UI chat.
 
 * ``publish_incoming`` — вызывается из хендлеров бота: каждое сообщение
-  пользователя сохраняется в БД (``ChatMessage``) и публикуется в Redis-канал
+  пользователя сохраняется в БД (``ChatMessage``) и публикуется в Redis-группу
   ``chat_<tg_id>``, куда подписан WebSocket менеджера (channels).
-* ``OutgoingListener`` — asyncio-задача, слушающая канал ``bot_outgoing``:
+* ``listen_outgoing`` — asyncio-задача, слушающая группу ``bot_outgoing``:
   сообщения, написанные менеджером в веб-интерфейсе, отправляются
   пользователю от лица бота через Telegram Bot API.
 
-Redis-сообщения имеют тот же формат payload, что и events channels
-``RedisChannelLayer``: ``{"type": "web", "channel": <name>, "data": {...}}``.
-Имя канала подчиняется правилу channels: ``group.<md5(name)>``.
+Ранее мост ходил «в обход» channels: публиковал JSON в сырой pub/sub-канал
+``group.<md5(...)>`` и слушал его же. Это не работало по двум причинам:
+
+1. ``RedisChannelLayer.group_send`` вообще не использует Redis pub/sub — он
+   кладёт сериализованное (msgpack по умолчанию) сообщение в sorted-set
+   ``asgi:<имя канала>`` каждого участника группы, а consumer забирает его
+   через ``BRPOP``. Сырой ``PUBLISH`` в ``group.<md5>`` никто не читал, а
+   JSON-payload не совпадал с msgpack-форматом channels.
+2. Подписка шла на имя ``group.<md5>("bot_outgoing")``, тогда как channels
+   вычисляет ключ группы как MD5 от строки ``"group:group:bot_outgoing"`` —
+   даже при pub/sub имена никогда не совпадали.
+
+Теперь бот использует сам ``channels_redis.core.RedisChannelLayer`` — формат,
+ключи и сериализация гарантированно совпадают с серверной частью (daphne).
 """
 import asyncio
-import hashlib
-import json
 import logging
 from urllib.parse import urlparse
 
@@ -22,85 +31,97 @@ logger = logging.getLogger(__name__)
 BOT_OUTGOING_CHANNEL = "bot_outgoing"
 
 
-def _decode_channel_name(name: str) -> str:
-    """channels RedisChannelLayer: 'group.' + md5hex(group_or_channel_key)."""
-    return f"group.{hashlib.md5(name.encode('utf-8')).hexdigest()}"
+def _layer_kwargs(redis_url: str) -> dict:
+    """Параметры RedisChannelLayer из REDIS_URL (в т.ч. номер db, который
+    channels-redis сам по URL не разбирает)."""
+    parsed = urlparse(redis_url)
+    kwargs = {
+        "host": parsed.hostname or "redis",
+        "port": parsed.port or 6379,
+        "db": int((parsed.path or "/0").lstrip("/") or 0),
+    }
+    if parsed.password:
+        kwargs["password"] = parsed.password
+    return {"hosts": [kwargs]}
 
 
 class ChatBridge:
     def __init__(self, redis_url: str):
-        parsed = urlparse(redis_url)
-        self._redis_kwargs = {
-            "host": parsed.hostname or "redis",
-            "port": parsed.port or 6379,
-            "db": int((parsed.path or "/0").lstrip("/") or 0),
-        }
-        if parsed.password:
-            self._redis_kwargs["password"] = parsed.password
-        self._client = None
+        self._redis_kwargs = _layer_kwargs(redis_url)
+        self._layer = None
 
-    async def _get_client(self):
-        if self._client is None:
-            import redis.asyncio as aioredis
+    async def _get_layer(self):
+        if self._layer is None:
+            from channels_redis.core import RedisChannelLayer
 
-            self._client = aioredis.Redis(**self._redis_kwargs)
-        return self._client
+            self._layer = RedisChannelLayer(**self._redis_kwargs)
+        return self._layer
 
     # ------------------------------------------------------------- incoming
-    async def publish_incoming(self, tg_id: int, *, text: str, time_str: str,
-                               attachment_kind: str = "", attachment_url: str = "") -> None:
+    async def publish_incoming(self, tg_id: int, *, msg_id: str = "", text: str,
+                               time_str: str, attachment_kind: str = "",
+                               attachment_url: str = "") -> None:
         """Notify all manager tabs watching this lead about a new user message."""
         try:
-            client = await self._get_client()
+            layer = await self._get_layer()
             event = {
                 "type": "message",
                 "direction": "incoming",
                 "text": text,
                 "time": time_str,
+                "sent_by": "",
                 "attachment_kind": attachment_kind,
                 "attachment_url": attachment_url,
             }
-            await client.publish(
-                _decode_channel_name(f"chat_{tg_id}"),
-                json.dumps({"type": "web", "channel": "this", "data": event}, ensure_ascii=False),
+            if msg_id:
+                event["id"] = msg_id
+            await layer.group_send(
+                f"chat_{tg_id}", {"type": "chat.event", "event": event}
             )
         except Exception:  # noqa: BLE001 - chat bridge must never break the bot
             logger.exception("Failed to publish incoming chat message for tg_id=%s", tg_id)
 
     # ------------------------------------------------------------- outgoing
     async def listen_outgoing(self, bot, stop: asyncio.Event) -> None:
-        """Send messages typed by the manager (via the web UI) through the bot."""
-        try:
-            client = await self._get_client()
-            pubsub = client.pubsub()
-            await pubsub.subscribe(_decode_channel_name(BOT_OUTGOING_CHANNEL))
-            logger.info("Bot outgoing-chat listener subscribed.")
-            while not stop.is_set():
-                msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if msg is None or msg.get("type") != "message":
-                    continue
+        """Send messages typed by the manager (via the web UI) through the bot.
+
+        Читает собственным каналом channels-слоя (``receive``): consumer'ы
+        менеджеров и бот — независимые получатели одной группы bot_outgoing.
+        Цикл устойчив к ошибкам Redis (reconnect с экспоненциальной паузой).
+        """
+        backoff = 1.0
+        while not stop.is_set():
+            try:
+                layer = await self._get_layer()
+                channel = await layer.new_channel(BOT_OUTGOING_CHANNEL)
+                await layer.group_add(BOT_OUTGOING_CHANNEL, channel)
+                logger.info("Bot outgoing-chat listener subscribed (%s).", channel)
+                backoff = 1.0
+                while not stop.is_set():
+                    payload = await layer.receive(channel)
+                    if payload is None:
+                        continue
+                    if payload.get("type") != "bot.send":
+                        continue  # e.g. "bot.typing" — пока не используем
+                    tg_id = payload.get("tg_id")
+                    text = payload.get("text") or ""
+                    if not tg_id or not text:
+                        continue
+                    try:
+                        await bot.send_message(chat_id=int(tg_id), text=text)
+                    except Exception:  # noqa: BLE001
+                        logger.exception("Failed to forward manager message to tg_id=%s", tg_id)
+                await layer.group_discard(BOT_OUTGOING_CHANNEL, channel)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - Redis hiccup: reconnect
+                logger.warning("Outgoing chat listener error (%s); retrying in %.0fs.",
+                               exc, backoff)
                 try:
-                    raw = msg["data"]
-                    if isinstance(raw, bytes):
-                        raw = raw.decode("utf-8")
-                    payload = json.loads(raw)
-                    data = payload.get("data", {})
-                except (json.JSONDecodeError, TypeError):
-                    continue
-                if data.get("type") != "bot.send":
-                    continue
-                tg_id = data.get("tg_id")
-                text = data.get("text") or ""
-                if not tg_id or not text:
-                    continue
-                try:
-                    await bot.send_message(chat_id=int(tg_id), text=text)
-                except Exception:  # noqa: BLE001
-                    logger.exception("Failed to forward manager message to tg_id=%s", tg_id)
-        except asyncio.CancelledError:
-            raise
-        except Exception:  # noqa: BLE001
-            logger.exception("Outgoing chat listener crashed; will not retry automatically.")
+                    await asyncio.wait_for(stop.wait(), timeout=backoff)
+                except asyncio.TimeoutError:
+                    pass
+                backoff = min(backoff * 2, 30.0)
 
 
 _bridge: ChatBridge | None = None
