@@ -123,7 +123,8 @@ def get_lead_snapshot(tg_id: int) -> list[tuple[str, str]] | None:
 
     Returns None if there is no lead with this tg_id.
     """
-    from bot.fsm import STEPS  # local import to avoid a circular dependency
+    from bot.fsm import STEPS, step_label  # local import to avoid a circular dependency
+    from bot.translations import t
     from bot.validation import format_date
 
     lead = Lead.objects.select_related("status").filter(tg_id=tg_id).first()
@@ -136,30 +137,30 @@ def get_lead_snapshot(tg_id: int) -> list[tuple[str, str]] | None:
         return str(value)
 
     rows: list[tuple[str, str]] = [
-        ("Status", lead.status.name if lead.status else "—"),
+        (t("label_status"), lead.status.name if lead.status else t("empty_value")),
     ]
     for step in STEPS:
         key = step["key"]
         value = getattr(lead, key, None)
-        label = step["label"]
+        label = step_label(step)
         # Media-backed fields: photo / additional_info (may be stored as file)
         if key == "photo":
-            value = "📎 photo" if lead.photo else "—"
+            value = "📎 photo" if lead.photo else t("empty_value")
         elif key == "additional_info":
             parts = []
             if lead.additional_info:
                 parts.append(lead.additional_info)
             if lead.additional_media:
-                parts.append("📎 attachment")
-            value = "\n".join(parts) if parts else "—"
+                parts.append(t("attachment_label"))
+            value = "\n".join(parts) if parts else t("empty_value")
         if value in (None, ""):
-            value = "—"
+            value = t("empty_value")
         else:
             value = fmt(value)
         rows.append((label, value))
 
     if lead.first_contact_date:
-        rows.append(("First contact date", format_date(lead.first_contact_date)))
+        rows.append((t("label_first_contact"), format_date(lead.first_contact_date)))
     return rows
 
 

@@ -1,5 +1,11 @@
-"""Inline keyboards for the lead form FSM."""
+"""Inline keyboards for the lead form FSM.
+
+All button texts come from bot.translations — edit tg_bot/bot/translations.py
+to translate the bot.
+"""
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from bot.translations import t
 
 SKIP_CB = "form:skip"
 RELATIONSHIP_PREFIX = "form:rel:"
@@ -12,12 +18,22 @@ PREV_ANSWER_PREFIX = "form:prev:"
 START_FILL_CB = "form:start"
 VIEW_REQUEST_CB = "form:view"
 
+# Relationship variants: (translation key, value stored in DB / sent back).
+RELATIONSHIP_VARIANTS = [
+    ("rel_wife", "жена"),
+    ("rel_mother", "мать"),
+    ("rel_father", "отец"),
+    ("rel_sister", "сестра"),
+    ("rel_son", "сын"),
+    ("rel_daughter", "дочь"),
+]
+
 
 def start_kb() -> InlineKeyboardMarkup:
     """Welcome keyboard with a single 'Fill in the data' button."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Fill in the data", callback_data=START_FILL_CB)]
+            [InlineKeyboardButton(text=t("btn_fill_form"), callback_data=START_FILL_CB)]
         ]
     )
 
@@ -26,40 +42,41 @@ def view_request_kb() -> InlineKeyboardMarkup:
     """Keyboard for users whose lead already exists with a non-visitor status."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="View request", callback_data=VIEW_REQUEST_CB)]
+            [InlineKeyboardButton(text=t("btn_view_request"), callback_data=VIEW_REQUEST_CB)]
         ]
     )
 
 
 def skip_kb(back: bool = False) -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(text="⏭ Skip", callback_data=SKIP_CB)]]
+    rows = [[InlineKeyboardButton(text=t("btn_skip"), callback_data=SKIP_CB)]]
     if back:
-        rows.append([InlineKeyboardButton(text="◀ Back", callback_data=BACK_CB)])
+        rows.append([InlineKeyboardButton(text=t("btn_back"), callback_data=BACK_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def relationship_kb(prior_value: str | None = None) -> InlineKeyboardMarkup:
     """Step 7: preset variants + free text; prior answer is highlighted."""
-    variants = ["Wife", "Mother", "Father", "Sister", "Son", "Daughter"]
     rows = []
     row: list[InlineKeyboardButton] = []
-    for v in variants:
-        label = f"✅ {v}" if prior_value and prior_value.lower() == v.lower() else v
-        row.append(InlineKeyboardButton(text=label, callback_data=f"form:rel:{v}"))
+    for key, value in RELATIONSHIP_VARIANTS:
+        label = t(key)
+        if prior_value and prior_value.lower() == value.lower():
+            label = f"✅ {label}"
+        row.append(InlineKeyboardButton(text=label, callback_data=f"{RELATIONSHIP_PREFIX}{value}"))
         if len(row) == 3:
             rows.append(row)
             row = []
     if row:
         rows.append(row)
-    rows.append([InlineKeyboardButton(text="⏭ Skip", callback_data=SKIP_CB)])
+    rows.append([InlineKeyboardButton(text=t("btn_skip"), callback_data=SKIP_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def review_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📨 Submit request", callback_data=SUBMIT_CB)],
-            [InlineKeyboardButton(text="✏️ Edit", callback_data=EDIT_CB)],
+            [InlineKeyboardButton(text=t("btn_submit"), callback_data=SUBMIT_CB)],
+            [InlineKeyboardButton(text=t("btn_edit"), callback_data=EDIT_CB)],
         ]
     )
 
@@ -83,5 +100,5 @@ def previous_answers_kb(options: list[tuple[int, str]]) -> InlineKeyboardMarkup:
         rows.append(
             [InlineKeyboardButton(text=f"{short}", callback_data=f"{PREV_ANSWER_PREFIX}{step}")]
         )
-    rows.append([InlineKeyboardButton(text="⏭ Enter new / Skip", callback_data=SKIP_CB)])
+    rows.append([InlineKeyboardButton(text=t("btn_new_or_skip"), callback_data=SKIP_CB)])
     return InlineKeyboardMarkup(inline_keyboard=rows)

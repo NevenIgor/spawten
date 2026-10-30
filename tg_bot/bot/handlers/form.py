@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.database import get_lead_snapshot, save_lead_from_form
 from bot.db_utils import run_sync
-from bot.fsm import REVIEW_STATE, STEPS
+from bot.fsm import REVIEW_STATE, STEPS, step_label, step_question
 from bot.keyboards import (
     EDIT_CB,
     PREV_ANSWER_PREFIX,
@@ -26,6 +26,7 @@ from bot.keyboards import (
     skip_kb,
 )
 from bot.texts import NO_REQUEST, SUBMITTED, VIEW_REQUEST_HEADER, WELCOME_SEEN
+from bot.translations import t
 from bot.validation import format_date, parse_date, validate_phone
 
 logger = logging.getLogger(__name__)
@@ -58,17 +59,17 @@ async def _ask_step(target_msg: Message | None, state: FSMContext, index: int,
     edit_mode = data.get("edit_mode", False)
     prev = data.get(step["key"])
 
-    text = f"<b>{step['question']}</b>"
+    text = f"<b>{step_question(step)}</b>"
 
     kb = None
     if step["kind"] == "relationship":
         kb = relationship_kb(prev if edit_mode else None)
         if edit_mode and prev:
-            text += "\n\n<i>Your previous answer is highlighted ✅ — or type a new variant.</i>"
+            text += f"\n\n<i>{t('highlight_hint')}</i>"
     elif edit_mode and prev not in (None, "", []):
         rendered = _render_value(step, prev)
         kb = previous_answers_kb([(index, rendered)])
-        text += "\n\n<i>You can reuse your previous answer:</i>"
+        text += f"\n\n<i>{t('reuse_hint')}</i>"
     elif step.get("skippable"):
         kb = skip_kb()
 
@@ -95,7 +96,7 @@ def _render_value(step: dict, value) -> str:
     if isinstance(value, date):
         return format_date(value)
     if isinstance(value, dict):
-        return "📎 attachment"
+        return t("attachment_label")
     return str(value)
 
 
@@ -119,9 +120,9 @@ async def _show_review(source: Message | CallbackQuery | None, state: FSMContext
         if isinstance(value, date):
             value = format_date(value)
         if value in (None, ""):
-            value = "—"
-        lines.append(f"<b>{step['label']}:</b> {value}")
-    text = "<b>Please check the entered data:</b>\n\n" + "\n".join(lines)
+            value = t("empty_value")
+        lines.append(f"<b>{step_label(step)}:</b> {value}")
+    text = f"<b>{t('review_header')}</b>\n\n" + "\n".join(lines)
 
     if isinstance(source, CallbackQuery) and source.message:
         await source.message.answer(text, reply_markup=review_kb())
@@ -159,7 +160,7 @@ async def cb_start_form(cb: CallbackQuery, state: FSMContext) -> None:
 @router.message(StateFilter(None), F.text.lower() == "/cancel")
 async def cmd_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("The form is closed. Send /start to begin again.")
+    await message.answer(t("form_cancelled"))
 
 
 # ------------------------------------------------------------------ text input
@@ -179,10 +180,7 @@ async def handle_text(message: Message, state: FSMContext) -> None:
     if step["kind"] == "date":
         parsed = parse_date(raw)
         if parsed is None:
-            await message.answer(
-                "❌ Wrong date format. Please enter the date as DD.MM.YYYY "
-                "(example: 15.06.1980)."
-            )
+            await message.answer(t("err_date_format", example="15.06.1980"))
             return
         await state.update_data({step["key"]: parsed})
         await _advance(message, state, index)
@@ -191,10 +189,7 @@ async def handle_text(message: Message, state: FSMContext) -> None:
     if step["kind"] == "phone":
         phone = validate_phone(raw)
         if phone is None:
-            await message.answer(
-                "❌ The phone number doesn't look valid. Please try again "
-                "(e.g. +7 900 123-45-67)."
-            )
+            await message.answer(t("err_phone_format", example="+7 900 123-45-67"))
             return
         await state.update_data({step["key"]: phone})
         await _advance(message, state, index)
@@ -212,7 +207,7 @@ async def handle_text(message: Message, state: FSMContext) -> None:
 
     # plain text steps
     if step["required"] and not raw:
-        await message.answer("This field is required, please enter a value.")
+        await message.answer(t("err_required"))
         return
     await state.update_data({step["key"]: raw})
     await _advance(message, state, index)
@@ -235,7 +230,7 @@ async def handle_media(message: Message, state: FSMContext, bot) -> None:
         photo = message.photo[-1]
         path = await _download(bot, photo.file_id, "photo")
         await state.update_data({step["key"]: path})
-        await message.answer("✅ Photo received!")
+        await message.answer(t("ok_photo"))
         await _advance(message, state, index)
         return
 
@@ -252,7 +247,7 @@ async def handle_media(message: Message, state: FSMContext, bot) -> None:
             file_id, kind = message.document.file_id, "document"
         path = await _download(bot, file_id, kind)
         await state.update_data({step["key"]: f"📎 {kind}", step["key"] + "_media": path})
-        await message.answer("✅ Attachment received!")
+        await message.answer(t("ok_attachment"))
         await _advance(message, state, index)
         return
 
@@ -270,11 +265,11 @@ async def handle_media(message: Message, state: FSMContext, bot) -> None:
             file_id, kind = message.document.file_id, "document"
         path = await _download(bot, file_id, kind)
         await state.update_data({step["key"]: "", step["key"] + "_media": path})
-        await message.answer("✅ Attachment received!")
+        await message.answer(t("ok_attachment"))
         await _advance(message, state, index)
         return
 
-    await message.answer("Please send text for this step (or press Skip).")
+    await message.answer(t("err_text_only"))
 
 
 # ------------------------------------------------------------------ callbacks
@@ -290,7 +285,7 @@ async def cb_skip(cb: CallbackQuery, state: FSMContext) -> None:
         return
     step = STEPS[index]
     if step["required"]:
-        await cb.answer("This field cannot be skipped", show_alert=True)
+        await cb.answer(t("err_cannot_skip"), show_alert=True)
         return
     await state.update_data({step["key"]: "", step["key"] + "_media": ""})
     await cb.answer()
@@ -350,8 +345,7 @@ async def cb_submit(cb: CallbackQuery, state: FSMContext) -> None:
         )
     except Exception:  # noqa: BLE001
         logger.exception("Failed to save lead")
-        await cb.answer("Something went wrong while saving. Try again later.",
-                        show_alert=True)
+        await cb.answer(t("err_save_db"), show_alert=True)
         return
 
     await state.clear()
@@ -364,8 +358,7 @@ async def cb_edit(cb: CallbackQuery, state: FSMContext) -> None:
     """Restart all steps keeping previous answers available on keyboards."""
     await state.update_data(edit_mode=True)
     await cb.answer()
-    await cb.message.answer("Let's correct the data — each step will show "
-                            "your previous answer.")
+    await cb.message.answer(t("edit_mode_intro"))
     await _ask_step(None, state, 0, from_callback=True, cb=cb)
 
 
@@ -378,8 +371,7 @@ async def _send_request_snapshot(target: Message) -> None:
         rows = await run_sync(get_lead_snapshot, target.from_user.id)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to load lead snapshot")
-        await target.answer("Something went wrong while loading your request. "
-                            "Please try again later.")
+        await target.answer(t("err_load_db"))
         return
 
     if not rows:

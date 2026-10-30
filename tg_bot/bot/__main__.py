@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
 
-    config = Config.from_env()
+    config = Config.from_env()  # also applies BOT_LANGUAGE translations
     if not config.bot_token or config.bot_token == "put-your-bot-token-here":
         logger.error("TELEGRAM_BOT_TOKEN is not set. Put the token into .env")
         raise SystemExit(1)
