@@ -27,6 +27,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # activates the language chosen in core.translations (DJANGO_LANGUAGE)
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -88,7 +90,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+# Язык Django-подсистемы: en | ru (переводы — в core/translations.py)
+from core import translations as _translations  # noqa: E402
+
+LANGUAGE_CODE = "ru" if _translations.CURRENT_LANG == "ru" else "en-us"
+LANGUAGES = [("en", "English"), ("ru", "Русский")]
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True

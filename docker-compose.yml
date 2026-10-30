@@ -12,6 +12,7 @@ x-app-env: &app-env
   CELERY_BROKER_URL: redis://redis:6379/1
   ELASTIC_SEARCH_ENGINE_URL: http://elastic:9200
   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  DJANGO_LANGUAGE: ${DJANGO_LANGUAGE:-en}   # en | ru — язык Django-подсистемы
 
 services:
   api:
@@ -56,7 +57,6 @@ services:
       <<: *app-env
       PYTHONPATH: /bot:/app/api
       BOT_MEDIA_DIR: /media
-      BOT_LANGUAGE: ${BOT_LANGUAGE:-en}   # en | ru — язык сообщений бота
     depends_on:
       postgres:
         condition: service_healthy

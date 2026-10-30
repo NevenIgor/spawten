@@ -8,8 +8,8 @@ from aiogram.types import Message
 
 from bot.database import has_filled_request, upsert_lead_on_start
 from bot.db_utils import run_sync
-from bot.i18n import t
 from bot.keyboards import existing_kb, start_kb
+from bot.texts import WELCOME, WELCOME_EXISTING, text
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,6 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
     await state.clear()
     if already_filled:
-        await message.answer(t("welcome_existing"), reply_markup=existing_kb())
+        await message.answer(text(WELCOME_EXISTING), reply_markup=existing_kb())
     else:
-        await message.answer(t("welcome"), reply_markup=start_kb())
+        await message.answer(text(WELCOME), reply_markup=start_kb())

@@ -1,12 +1,23 @@
+"""Django admin registration.
+
+Все подписи разделов берутся из файла перевода ``core.translations``;
+названия статусов выводятся в текущем языке через ``status_display``.
+"""
 from django.contrib import admin
 
 from core.models import Lead, Status
+from core.translations import status_display, translate
 
 
 @admin.register(Status)
 class StatusAdmin(admin.ModelAdmin):
-    list_display = ("name", "created", "modified")
+    list_display = ("name", "translated_name", "created", "modified")
     search_fields = ("name",)
+
+    @admin.display(description=translate("status_name"))
+    def translated_name(self, obj):
+        """Status label in the active language (DB keeps the canonical name)."""
+        return status_display(obj.name)
 
 
 @admin.register(Lead)
@@ -25,9 +36,11 @@ class LeadAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created", "modified")
     fieldsets = (
         (None, {"fields": ("tg_id", "status", "first_contact_date", "note")}),
-        ("Lead data", {"fields": ("full_name", "workplace", "contact_phone")}),
+        (translate("admin.section_lead"), {
+            "fields": ("full_name", "workplace", "contact_phone"),
+        }),
         (
-            "Relative",
+            translate("admin.section_relative"),
             {
                 "fields": (
                     "relative_full_name",
@@ -39,6 +52,8 @@ class LeadAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Additional", {"fields": ("additional_info", "additional_media")}),
-        ("Meta", {"fields": ("id", "created", "modified")}),
+        (translate("admin.section_additional"), {
+            "fields": ("additional_info", "additional_media"),
+        }),
+        (translate("admin.section_meta"), {"fields": ("id", "created", "modified")}),
     )
